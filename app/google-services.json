@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "981539955630",
+    "project_id": "plateit-e33f8",
+    "storage_bucket": "plateit-e33f8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:981539955630:android:13f8ecebc731f549a29e3f",
+        "android_client_info": {
+          "package_name": "com.example.plateit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAY8OmRxf1ZQUptNQEuaNyFcjdys_elTUc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

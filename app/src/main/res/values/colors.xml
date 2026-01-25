@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- Pop & Tech Palette -->
+    <color name="banana_yellow">#FFE135</color>
+    <color name="banana_yellow_dark">#FDD835</color>
+    <color name="tech_black">#000000</color>
+    <color name="plain_white">#FFFFFF</color>
+    <color name="gemini_purple">#CDDC39</color>
+    
+    <!-- Legacy/UI Colors -->
+    <color name="soft_cream">#F5F5F7</color>
+</resources>
