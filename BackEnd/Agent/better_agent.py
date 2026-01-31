@@ -103,7 +103,7 @@ def get_transcript(state: Video):
     params = {
         "engine": "youtube_video_transcript",
         "v": state["video_id"],
-        "api_key": "5430f234ebc964dd1ca39b4c98572751c4ddadf23fb5157fce32e354e7aa9811",
+        "api_key": os.getenv("SERP_API_KEY"),
     }
 
     try:
@@ -138,7 +138,7 @@ def get_description(state: Video):
     params = {
         "engine": "youtube_video",
         "v": state["video_id"],
-        "api_key": "5430f234ebc964dd1ca39b4c98572751c4ddadf23fb5157fce32e354e7aa9811",
+        "api_key": os.getenv("SERP_API_KEY"),
     }
 
     try:

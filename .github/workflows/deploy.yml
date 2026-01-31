@@ -1,0 +1,67 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'BackEnd/Agent/**'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  # You can change these defaults
+  REGION: us-central1
+  SERVICE_NAME: plateit-agent
+  REPO_NAME: plateit-repo 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./BackEnd/Agent
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Log in to Google Cloud
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Set up Cloud SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Configure Docker to use Google Artifact Registry
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${REGION}-docker.pkg.dev
+
+      # Build the Docker image
+      - name: Build Docker Image
+        run: |
+          docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:${{ github.sha }} .
+
+      # Push the Docker image
+      - name: Push Docker Image
+        run: |
+          docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:${{ github.sha }}
+
+      # Deploy to Cloud Run
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:${{ github.sha }}
+          flags: '--allow-unauthenticated' # Remove this if you want private access
+          env_vars: |
+            SPOONACULAR_API_KEY=${{ secrets.SPOONACULAR_API_KEY }}
+            GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+            SERP_API_KEY=${{ secrets.SERP_API_KEY }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
