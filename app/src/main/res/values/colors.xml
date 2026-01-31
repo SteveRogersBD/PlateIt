@@ -12,4 +12,8 @@
     
     <!-- Legacy/UI Colors -->
     <color name="soft_cream">#F5F5F7</color>
+    
+    <!-- New UI Colors -->
+    <color name="gray_800">#424242</color>
+    <color name="app_primary">#FFE135</color>
 </resources>

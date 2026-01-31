@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.plateit" />
+                  <option name="mobileSdkAppId" value="1:981539955630:android:13f8ecebc731f549a29e3f" />
+                  <option name="projectId" value="plateit-e33f8" />
+                  <option name="projectNumber" value="981539955630" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

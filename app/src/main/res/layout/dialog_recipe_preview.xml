@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@android:color/white">
+
+    <TextView
+        android:id="@+id/tvPreviewTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Delicious Pasta"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@color/black"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/tvPreviewTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="15 mins"
+            android:textSize="16sp"
+            android:textColor="@color/gray_800"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=" • "
+            android:textSize="16sp"/>
+
+        <TextView
+            android:id="@+id/tvPreviewIngredients"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="8 Ingredients"
+            android:textSize="16sp"
+            android:textColor="@color/gray_800"/>
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnStartCooking"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="Start Cooking"
+        android:backgroundTint="@color/app_primary"
+        android:textColor="@color/white"
+        android:paddingVertical="12dp"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Cancel"
+        style="@style/Widget.MaterialComponents.Button.TextButton"/>
+
+</LinearLayout>
