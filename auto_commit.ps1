@@ -1,8 +1,18 @@
+param (
+    [string]$Message = ""
+)
+
 $ErrorActionPreference = "Stop"
 
-# Get current date and time for the commit message
+# Get current date and time
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-$commitMessage = "Auto commit: $timestamp"
+
+# Determine commit message
+if ([string]::IsNullOrWhiteSpace($Message)) {
+    $commitMessage = "Auto commit: $timestamp"
+} else {
+    $commitMessage = "$Message ($timestamp)"
+}
 
 Write-Host "Checking for changes..."
 $status = git status --porcelain

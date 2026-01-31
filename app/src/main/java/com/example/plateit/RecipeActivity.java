@@ -22,16 +22,21 @@ public class RecipeActivity extends AppCompatActivity {
         androidx.recyclerview.widget.RecyclerView rvIngredients = findViewById(R.id.rvIngredients);
         androidx.recyclerview.widget.RecyclerView rvSteps = findViewById(R.id.rvSteps);
 
+        com.example.plateit.responses.RecipeResponse recipe = (com.example.plateit.responses.RecipeResponse) getIntent()
+                .getSerializableExtra("recipe_data");
+
         // Buttons
         findViewById(R.id.btnStartCooking).setOnClickListener(v -> {
-            android.widget.Toast.makeText(this, "Cooking Mode Started!", android.widget.Toast.LENGTH_SHORT).show();
-            // Future: Navigate to immersive step-by-step view
+            if (recipe != null && recipe.getSteps() != null) {
+                android.content.Intent intent = new android.content.Intent(this, CookingModeActivity.class);
+                intent.putStringArrayListExtra("steps_list", new java.util.ArrayList<>(recipe.getSteps()));
+                startActivity(intent);
+            } else {
+                android.widget.Toast.makeText(this, "No steps available!", android.widget.Toast.LENGTH_SHORT).show();
+            }
         });
 
         findViewById(R.id.btnChooseAnother).setOnClickListener(v -> finish());
-
-        com.example.plateit.responses.RecipeResponse recipe = (com.example.plateit.responses.RecipeResponse) getIntent()
-                .getSerializableExtra("recipe_data");
 
         if (recipe != null) {
             // Header

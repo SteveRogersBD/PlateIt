@@ -30,6 +30,10 @@
         <activity
             android:name=".RecipeActivity"
             android:exported="false" />
+        <activity
+            android:name=".CookingModeActivity"
+            android:theme="@style/Theme.MaterialComponents.Light.NoActionBar"
+            android:exported="false" />
 
         <activity
             android:name=".SignInActivity"
