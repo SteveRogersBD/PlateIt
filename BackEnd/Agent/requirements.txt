@@ -11,4 +11,3 @@ youtube-transcript-api
 sqlmodel
 psycopg2-binary
 langgraph-checkpoint-postgres
-google-search-results
