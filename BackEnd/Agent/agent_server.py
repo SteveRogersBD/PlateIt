@@ -90,6 +90,32 @@ def extract_recipe(request: VideoRequest):
         print(f"Error executing workflow: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+from fastapi import File, UploadFile
+import shutil
+
+@app.post("/extract_recipe_image")
+def extract_recipe_image(file: UploadFile = File(...)):
+    try:
+        # Save the uploaded file temporarily
+        temp_filename = f"temp_upload_{file.filename}"
+        with open(temp_filename, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        abs_path = os.path.abspath(temp_filename)
+        
+        # Pass the local file path as the URL
+        initial_state = {"url": abs_path}
+        
+        # Invoke agent
+        final_state = recipe_workflow.invoke(initial_state)
+        
+        # Clean up is done by agent usually, but we can verify later
+        
+        return final_state.get('recipe', {})
+    except Exception as e:
+         print(f"Error processing image: {e}")
+         raise HTTPException(status_code=500, detail=str(e))
+
 # --- New Cooking Chat ---
 class ChatRequest(BaseModel):
     message: str

@@ -10,9 +10,17 @@ import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.POST;
 
+import okhttp3.MultipartBody;
+import retrofit2.http.Multipart;
+import retrofit2.http.Part;
+
 public interface RecipeApiService {
     @POST("/extract_recipe")
     Call<RecipeResponse> extractRecipe(@Body VideoRequest body);
+
+    @Multipart
+    @POST("/extract_recipe_image")
+    Call<RecipeResponse> extractRecipeImage(@Part MultipartBody.Part image);
 
     @POST("/signin")
     Call<AuthResponse> signin(@Body SignInRequest body);

@@ -1,6 +1,10 @@
 import os
 import requests
 from langchain_core.tools import tool
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse, parse_qs
+import time
+import google.generativeai as genai
 
 # --- Google / SerpAPI Tools ---
 
@@ -221,11 +225,7 @@ def extract_recipe_from_url(url: str):
     data = _spoonacular_get("/recipes/extract", {"url": url})
     if "error" in data: return data["error"]
     
-    title = data.get("title")
-    ingredients = [f"- {i['original']}" for i in data.get("extendedIngredients", [])]
-    instructions = data.get("instructions")
-    
-    return f"Title: {title}\nIngredients:\n{chr(10).join(ingredients)}\nInstructions:\n{instructions}"
+    return data
 
 @tool
 def search_ingredients(query: str, number: int = 5):
@@ -264,3 +264,176 @@ def create_recipe_card(recipe_id: int):
     if "error" in data: return data["error"]
     
     return data.get("url", "No card URL returned.")
+
+# --- Content Extraction Tools ---
+
+@tool
+def scrape_website_text(url: str):
+    """
+    Scrapes the text content from a given website URL.
+    Useful for extracting recipes or articles from blogs/websites.
+    """
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Remove script and style elements
+        for script in soup(["script", "style", "nav", "footer"]):
+            script.decompose()
+            
+        text = soup.get_text()
+        
+        # Clean up text
+        lines = (line.strip() for line in text.splitlines())
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        
+        return text
+        
+    except Exception as e:
+        return f"Error scraping website: {e}"
+
+@tool
+def download_video_file(url: str, filename: str = "temp_video_recipe.mp4"):
+    """
+    Downloads a video file from a URL using yt-dlp (supports YouTube, Instagram, TikTok, etc.)
+    or direct HTTP download.
+    Returns the absolute path of the downloaded file.
+    """
+    import yt_dlp
+    
+    # Absolute path for the output
+    abs_filename = os.path.abspath(filename)
+    
+    # 1. Try yt-dlp first (handles most social media + direct links often)
+    ydl_opts = {
+        'outtmpl': abs_filename, # Force filename
+        'format': 'best[ext=mp4]/best', # Prefer mp4
+        'quiet': True,
+        'overwrites': True,
+    }
+    
+    print(f" -> Attempting download with yt-dlp: {url}")
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        return abs_filename
+    except Exception as e:
+        print(f" -> yt-dlp failed: {e}. Falling back to requests.")
+        
+    # 2. Fallback to direct request (for simple file servers)
+    try:
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(filename, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192): 
+                    f.write(chunk)
+        return abs_filename
+    except Exception as e:
+        return f"Error downloading video: {e}"
+
+# --- YouTube Tools ---
+
+@tool
+def extract_video_id(url: str):
+    """
+    Extracts the YouTube Video ID from a given URL.
+    Supports standard watch URLs, Shorts, and Share links.
+    """
+    if "watch" in url:
+        parsed_url = urlparse(url)
+        if 'v' in parse_qs(parsed_url.query):
+            return parse_qs(parsed_url.query)['v'][0]
+    elif "shorts" in url:
+        return url.split("shorts/")[1].split("?")[0]
+    elif "youtu.be" in url:
+        return url.split("/")[-1].split("?")[0]
+    
+    return ""
+
+@tool
+def get_youtube_transcript(video_id: str):
+    """
+    Fetches the transcript of a YouTube video using SerpApi.
+    """
+    api_key = os.getenv("SERP_API_KEY")
+    if not api_key:
+        return "Error: SERP_API_KEY not set."
+        
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "youtube_video_transcript",
+        "v": video_id,
+        "api_key": api_key,
+    }
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        if "transcript" in data:
+            transcripts = [t["snippet"] for t in data["transcript"]]
+            return "\n".join(transcripts)
+        else:
+            return "No transcript found."
+    except Exception as e:
+        return f"Error fetching transcript: {e}"
+
+@tool
+def get_youtube_description(video_id: str):
+    """
+    Fetches the description of a YouTube video using SerpApi.
+    """
+    api_key = os.getenv("SERP_API_KEY")
+    if not api_key:
+        return "Error: SERP_API_KEY not set."
+
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "youtube_video",
+        "v": video_id,
+        "api_key": api_key,
+    }
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("description", {}).get("content", "No description found.")
+    except Exception as e:
+        return f"Error fetching description: {e}"
+
+# --- Helper Tools ---
+
+@tool
+def get_ingredient_image_url(ingredient_name: str):
+    """
+    Fetches the image URL for a given ingredient name using Spoonacular.
+    """
+    api_key = os.getenv("SPOONACULAR_API_KEY")
+    if not api_key:
+        return None
+    
+    url = "https://api.spoonacular.com/food/ingredients/search"
+    params = {
+        "query": ingredient_name,
+        "apiKey": api_key,
+        "number": 1
+    }
+    
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        if data.get("results"):
+            # Spoonacular base URL for ingredients
+            image_server_base = "https://img.spoonacular.com/ingredients_100x100/"
+            return f"{image_server_base}{data['results'][0]['image']}"
+    except Exception:
+        pass
+    
+    return None
+

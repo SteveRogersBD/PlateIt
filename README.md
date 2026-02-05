@@ -24,3 +24,11 @@ Focus on the food.
 - Large, readable step-by-step interface.
 - Built-in timers for specific steps.
 - **AI Cooking Coach**: Get short, contextual tips for complex steps without needing to ask.
+
+## 🚀 Roadmap
+Here's what we're cooking up next:
+- [ ] **Social Sharing**: Share your adapted recipes and cooking triumphs with friends.
+- [ ] **Meal Planner**: Weekly calendar integration to plan your meals and automate grocery lists.
+- [ ] **Dietary Filters**: One-tap toggles for Keto, Vegan, Gluten-Free, and more.
+- [ ] **Shopping Integration**: Direct checkout with Instacart and Amazon Fresh.
+- [ ] **Cross-Device Sync**: Access your pantry and recipes on all your devices.

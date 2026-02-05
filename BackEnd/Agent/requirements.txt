@@ -11,3 +11,6 @@ youtube-transcript-api
 sqlmodel
 psycopg2-binary
 langgraph-checkpoint-postgres
+beautifulsoup4
+google-generativeai
+yt-dlp
