@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 from typing import Optional
 import uuid
+import os
 
 from better_agent import workflow as recipe_workflow
 from database import get_session, create_db_and_tables
@@ -12,7 +13,10 @@ app = FastAPI()
 
 @app.on_event("startup")
 def on_startup():
-    create_db_and_tables()
+    try:
+        create_db_and_tables()
+    except Exception as e:
+        print(f"Startup Error: Could not connect to database. {e}")
 
 # --- Auth Models ---
 class SignupRequest(BaseModel):
