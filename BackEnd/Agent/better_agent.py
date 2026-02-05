@@ -9,6 +9,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 import google.generativeai as genai
+from langchain_core.tools import tool
 
 # --- Import Reusable Tools ---
 from tools import (

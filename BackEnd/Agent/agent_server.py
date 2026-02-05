@@ -11,13 +11,6 @@ from models import User
 
 app = FastAPI()
 
-@app.on_event("startup")
-def on_startup():
-    try:
-        create_db_and_tables()
-    except Exception as e:
-        print(f"Startup Error: Could not connect to database. {e}")
-
 # --- Auth Models ---
 class SignupRequest(BaseModel):
     full_name: Optional[str] = None

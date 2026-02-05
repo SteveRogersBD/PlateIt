@@ -14,3 +14,4 @@ langgraph-checkpoint-postgres
 beautifulsoup4
 google-generativeai
 yt-dlp
+python-multipart
