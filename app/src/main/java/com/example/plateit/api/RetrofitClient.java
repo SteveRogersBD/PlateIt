@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClient {
     // If testing on Emulator, 10.0.2.2 points to your computer's localhost
-    private static final String BASE_URL = "https://plateit-agent-964229332293.us-central1.run.app/";
+    private static final String BASE_URL = "http://10.0.2.2:8000/";
     private static Retrofit recipefit = null;
 
     public static RecipeApiService getService() {

@@ -55,9 +55,71 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginHorizontal="24dp"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="16dp"
         app:layout_constraintTop_toBottomOf="@id/topBar"
-        app:layout_constraintBottom_toTopOf="@id/bottomControls"/>
+        app:layout_constraintBottom_toTopOf="@id/cvAssistantResponse"/>
+
+    <!-- Assistant Response Card (Hidden by default) -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cvAssistantResponse"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="16dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="@color/white"
+        android:visibility="gone"
+        tools:visibility="visible"
+        app:layout_constraintBottom_toTopOf="@id/assistantBar">
+        
+        <TextView
+            android:id="@+id/tvAssistantText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:text="The cheese should be golden brown and bubbling."
+            android:textColor="@color/gray_800"
+            android:textSize="16sp"/>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Assistant Bar -->
+    <LinearLayout
+        android:id="@+id/assistantBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:paddingBottom="16dp"
+        app:layout_constraintBottom_toTopOf="@id/bottomControls">
+        
+        <ImageButton
+            android:id="@+id/btnCamera"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_camera_alt"
+            app:tint="@color/gray_600"/>
+            
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btnMic"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="32dp"
+            android:src="@drawable/ic_mic"
+            app:backgroundTint="@color/app_primary"
+            app:tint="@color/black"
+            app:elevation="6dp"/>
+            
+        <ImageButton
+            android:id="@+id/btnKeyboard"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_keyboard"
+            app:tint="@color/gray_600"/>
+            
+    </LinearLayout>
 
     <!-- Bottom Controls -->
     <LinearLayout

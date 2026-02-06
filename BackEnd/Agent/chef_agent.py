@@ -6,6 +6,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
+from better_agent import Recipe
 from tools import (
     search_recipes, search_by_nutrients, find_by_ingredients,
     get_recipe_information, find_similar_recipes, get_random_recipes,
@@ -20,69 +21,119 @@ load_dotenv()
 # --- 1. State Definition ---
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
-
+    # Context injected from the App
+    recipe: Recipe
+    current_step: int
+    image_data: str | None # Base64 encoded image
+    
 # --- 2. Setup Tools & Model ---
 tools = [
-    search_recipes, search_by_nutrients, find_by_ingredients,
-    get_recipe_information, find_similar_recipes, get_random_recipes,
-    extract_recipe_from_url, search_ingredients, get_ingredient_information,
-    create_recipe_card, google_search, google_image_search
+     search_recipes, search_by_nutrients, find_by_ingredients,
+     get_recipe_information, find_similar_recipes, get_random_recipes,
+     extract_recipe_from_url, search_ingredients, get_ingredient_information,
+     create_recipe_card, google_search, google_image_search
 ]
 
-# The "Chef" uses this model (needs tool calling capability)
-llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0)
+# The "Chef" model
+llm = ChatGoogleGenerai(model="gemini-3-flash-preview", temperature=0)
 llm_with_tools = llm.bind_tools(tools)
 
-# The "Waiter" uses this model (needs structured output capability)
+# The "Waiter" model (Structural output)
 response_generator = llm.with_structured_output(AgentResponse)
 
 # --- 3. Nodes ---
 
+from better_agent import Recipe # Import Recipe model
+
 def chef_node(state: AgentState):
     """
     The 'Reasoning' node.
-    Decides whether to call a tool or pass to the waiter.
+    Injects context about the current cooking step using the Recipe object.
+    Handles Multimodal Input (Text + Image).
     """
-    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+    
+    # 1. Try to get context from the structured Recipe object
+    recipe = state.get("recipe")
+    idx = state.get("current_step", 0)
+    step_context = "General Cooking Support"
+    
+    if recipe and recipe.steps:
+        # Check bounds
+        if isinstance(idx, int) and 0 <= idx < len(recipe.steps):
+            current_text = recipe.steps[idx]
+            step_context = f"Step {idx + 1} of {len(recipe.steps)}: {current_text}"
+        else:
+             step_context = "Unknown step index."
+    
+    # 2. Fallback to string if provided (legacy/direct injection)
+    elif isinstance(state.get("current_step"), str):
+        step_context = state.get("current_step")
+
+    # System Prompt for Context
+    system_msg = SystemMessage(content=f"""
+    You are an expert Chef Assistant guiding a user through a recipe.
+    
+    CURRENT SITUATION:
+    The user is working on: "{step_context}"
+    
+    YOUR JOB:
+    1. Answer the user's question based on this step context.
+    2. If the user sends an IMAGE, analyze it carefully (doneness, texture, mistakes).
+    3. KEEP ANSWERS SHORT (1-2 sentences) and conversational. The user is cooking and listening to you via voice.
+    """)
+    
+    # --- Multimodal Message Construction ---
+    input_messages = state["messages"]
+    last_user_msg = input_messages[-1]
+    
+    # Check if we have image data in the state (injected by server)
+    image_b64 = state.get("image_data")
+    
+    if image_b64:
+        print("--- Chef Node: Attaching Image to Prompt ---")
+        # Structure the message content as a list for LangChain Google integration
+        # text + image_url (data scheme)
+        
+        # We replace the last text-only message with a multimodal one
+        content_parts = [
+            {"type": "text", "text": last_user_msg.content},
+            {
+                "type": "image_url", 
+                "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}
+            }
+        ]
+        
+        multimodal_msg = HumanMessage(content=content_parts)
+        
+        # Replace the last message in history with our new multimodal one
+        # Note: In LangGraph, we can't easily 'replace' inside the list passed to invoke(messages) 
+        # unless we reconstruct it.
+        history = [system_msg] + input_messages[:-1] + [multimodal_msg]
+        
+    else:
+        # Text only
+        history = [system_msg] + input_messages
+    
+    return {"messages": [llm_with_tools.invoke(history)]}
 
 def waiter_node(state: AgentState):
     """
     The 'Formatting' node.
-    Takes the conversation history and formats the final response for the App.
+    Ensures the output is clean JSON for the Android App.
     """
-    # Simply ask the model to summarize the latest state into our Schema
-    
-    # We provide a system prompt to guide the formatting
     system_prompt = SystemMessage(content="""
     You are the 'Waiter' for the PlateIt App.
-    Your job is to take the Chef's analysis and format it for the user's screen.
+    Format the Chef's response for the mobile app.
     
-    1. Look at the last message from the 'Chef' (AI).
-    2. Create a friendly 'chat_bubble' message.
-    3. If the Chef found recipes, ingredients, or videos, populate the corresponding UI payload.
-    4. If the Chef just answered a question (text only), set ui_type to 'none'.
-    
-    Be concise and friendly!
+    1. 'chat_bubble': The text to behave displayed and SPOKEN by the TTS engine. Keep it natural.
+    2. 'ui_component': If the user asked for a timer, unit conversion, or image, specify it here (optional).
     """)
     
-    # We combine system prompt + history
     messages = [system_prompt] + state["messages"]
-    
     response = response_generator.invoke(messages)
     
-    # We append this final structured response as a special message or just return it?
-    # For LangGraph state, we usually append an AIMessage.
-    # But since we want the JSON object, we might want to print it or store it specially.
-    # For this flow, let's just return it as a final print in the main loop, 
-    # but strictly speaking, the node returns state updates.
-    # Let's wrap the JSON in a strict AIMessage so the graph is happy, 
-    # OR we can just return the raw object if this is the last node.
-    
-    # Let's return the structured object under a specific key if we extended state, 
-    # but to keep it simple, we will act as a "pass through" that effectively ends the turn.
-    # We will attach the "final_response" to the state if we wanted to persistence.
-    
-    return {"messages": [HumanMessage(content=str(response.model_dump()))]} 
+    # Return the raw JSON string as the final message content for the server to parse
+    return {"messages": [HumanMessage(content=response.model_dump_json())]} 
 
 
 # --- 4. The Graph ---

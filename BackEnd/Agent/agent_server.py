@@ -79,7 +79,7 @@ class VideoRequest(BaseModel):
 
 @app.post("/extract_recipe")
 def extract_recipe(request: VideoRequest):
-    initial_state = {"video_url": request.video_url}
+    initial_state = {"url": request.video_url}
     try:
         final_state = recipe_workflow.invoke(initial_state)
         return final_state.get('recipe',{})
@@ -114,13 +114,66 @@ def extract_recipe_image(file: UploadFile = File(...)):
          raise HTTPException(status_code=500, detail=str(e))
 
 # --- New Cooking Chat ---
+from chef_agent import graph as chef_workflow
+from langchain_core.messages import HumanMessage
+from typing import Dict, Any
+
+# --- New Cooking Chat ---
 class ChatRequest(BaseModel):
     message: str
     thread_id: str
+    recipe: Dict[str, Any] # Full recipe object
+    current_step: int # 0-indexed step
+    image_data: Optional[str] = None # Base64 encoded image
 
 @app.post("/chat")
 def chat_endpoint(request: ChatRequest):
-    return None
+    print(f"--- Chat Request: {request.message} (Step {request.current_step}) ---")
+    
+    # 1. Construct State
+    # Convert dict back to Recipe object logic is handled by Pydantic inside the node usually,
+    # but since our AgentState expects a 'Recipe' object (Pydantic model) and we get a Dict,
+    # we might need to rely on the node to handle it or convert it here.
+    # The chef_node currently does: recipe = state.get("recipe")
+    # We should pass the dict, and let's ensure chef_node handles dict access OR convert it here.
+    # For simplicity, we pass the dict and if our chef_agent expects a Pydantic object, we convert it there 
+    # OR we convert it here.
+    # Let's convert it here for type safety if better_agent is available.
+    
+    from better_agent import Recipe
+    try:
+        recipe_obj = Recipe(**request.recipe)
+    except Exception as e:
+        print(f"Warning: Could not parse recipe object: {e}")
+        recipe_obj = None
+
+    initial_state = {
+        "messages": [HumanMessage(content=request.message)],
+        "recipe": recipe_obj,
+        "current_step": request.current_step,
+        "image_data": request.image_data
+    }
+    
+    # 2. Invoke Chef Agent
+    try:
+        final_state = chef_workflow.invoke(initial_state)
+        
+        # 3. Extract Response
+        # The waiter node puts the JSON string in the last message's content
+        last_message = final_state["messages"][-1]
+        response_json_str = last_message.content
+        
+        # We assume it's valid JSON because Waiter guarantees it (mostly)
+        import json
+        response_data = json.loads(response_json_str)
+        
+        return response_data
+        
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,29 +1,73 @@
 package com.example.plateit;
 
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.viewpager2.widget.ViewPager2;
+
 import com.example.plateit.adapters.CookingStepsAdapter;
-import java.util.List;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 public class CookingModeActivity extends AppCompatActivity {
+
+    private static final int PERMISSION_REQUEST_CODE = 100;
 
     private ViewPager2 viewPager;
     private ProgressBar progressBar;
     private TextView tvStepProgress;
     private List<String> steps;
+    // Data
+    private com.example.plateit.models.Recipe currentRecipe;
+
+    // Assistant UI
+    private FloatingActionButton btnMic;
+    private ImageButton btnCamera, btnKeyboard;
+    private CardView cvAssistantResponse;
+    private TextView tvAssistantText;
+
+    // Voice & TTS
+    private SpeechRecognizer speechRecognizer;
+    private TextToSpeech textToSpeech;
+    private boolean isListening = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cooking_mode);
 
-        // Get Steps from Intent
-        steps = getIntent().getStringArrayListExtra("steps_list");
+        // Get Steps & Recipe from Intent
+        // Ideally pass the whole Recipe Serializable object
+        currentRecipe = (com.example.plateit.models.Recipe) getIntent().getSerializableExtra("recipe_object");
+
+        if (currentRecipe != null) {
+            steps = currentRecipe.getSteps();
+        } else {
+            // Fallback for legacy calls (development only)
+            steps = getIntent().getStringArrayListExtra("steps_list");
+        }
+
         if (steps == null)
             steps = new ArrayList<>();
 
@@ -34,17 +78,21 @@ public class CookingModeActivity extends AppCompatActivity {
         View btnNext = findViewById(R.id.btnNext);
         View btnClose = findViewById(R.id.btnClose);
 
+        // Assistant UI
+        btnMic = findViewById(R.id.btnMic);
+        btnCamera = findViewById(R.id.btnCamera);
+        btnKeyboard = findViewById(R.id.btnKeyboard);
+        cvAssistantResponse = findViewById(R.id.cvAssistantResponse);
+        tvAssistantText = findViewById(R.id.tvAssistantText);
+
         // Setup ViewPager
         CookingStepsAdapter adapter = new CookingStepsAdapter(steps);
         viewPager.setAdapter(adapter);
-
-        // Add Page Transformer for Animation
         viewPager.setPageTransformer(new ZoomOutPageTransformer());
 
-        // Initialize Progress
         updateProgress(0);
 
-        // Listeners
+        // ViewPager Listeners
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
@@ -53,11 +101,11 @@ public class CookingModeActivity extends AppCompatActivity {
             }
         });
 
+        // Navigation Listeners
         btnPrevious.setOnClickListener(v -> {
             int current = viewPager.getCurrentItem();
-            if (current > 0) {
+            if (current > 0)
                 viewPager.setCurrentItem(current - 1);
-            }
         });
 
         btnNext.setOnClickListener(v -> {
@@ -65,23 +113,273 @@ public class CookingModeActivity extends AppCompatActivity {
             if (current < steps.size() - 1) {
                 viewPager.setCurrentItem(current + 1);
             } else {
-                // Finished
-                finish(); // Or show "Bon Appetit" dialog
+                finish();
             }
         });
 
         btnClose.setOnClickListener(v -> finish());
+
+        // --- Assistant Logic ---
+        initializeTextToSpeech();
+        initializeSpeechRecognizer();
+
+        btnMic.setOnClickListener(v -> {
+            if (checkPermission()) {
+                if (!isListening) {
+                    startListening();
+                } else {
+                    stopListening();
+                }
+            } else {
+                requestPermission();
+            }
+        });
+
+        btnKeyboard.setOnClickListener(v -> showKeyboardInput());
+        btnCamera.setOnClickListener(v -> showCameraInput());
     }
+
+    // --- Inputs: Keyboard & Camera ---
+
+    private void showKeyboardInput() {
+        com.google.android.material.bottomsheet.BottomSheetDialog sheet = new com.google.android.material.bottomsheet.BottomSheetDialog(
+                this);
+        View view = getLayoutInflater().inflate(R.layout.bottom_sheet_chat_input, null);
+        sheet.setContentView(view);
+
+        com.google.android.material.textfield.TextInputEditText etQuery = view.findViewById(R.id.etQuery);
+        com.google.android.material.button.MaterialButton btnSend = view.findViewById(R.id.btnSend);
+
+        btnSend.setOnClickListener(v -> {
+            String q = etQuery.getText().toString().trim();
+            if (!q.isEmpty()) {
+                handleUserQuery(q);
+                sheet.dismiss();
+            }
+        });
+
+        sheet.show();
+    }
+
+    private static final int CAMERA_REQUEST_CODE = 200;
+
+    private void showCameraInput() {
+        Intent takePictureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(takePictureIntent, CAMERA_REQUEST_CODE);
+        } else {
+            Toast.makeText(this, "No camera app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // --- Logic Stub ---
+
+    private void handleUserQuery(String query) {
+        handleUserQuery(query, null);
+    }
+
+    private void handleUserQuery(String query, android.graphics.Bitmap image) {
+        if (currentRecipe == null) {
+            Toast.makeText(this, "Error: missing recipe data", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show loading state
+        Toast.makeText(this, "Thinking...", Toast.LENGTH_SHORT).show();
+
+        int currentStepIndex = viewPager.getCurrentItem();
+        String imageBase64 = null;
+
+        if (image != null) {
+            // Convert to Base64
+            java.io.ByteArrayOutputStream byteArrayOutputStream = new java.io.ByteArrayOutputStream();
+            image.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
+            byte[] byteArray = byteArrayOutputStream.toByteArray();
+            imageBase64 = android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP);
+        }
+
+        com.example.plateit.requests.ChatRequest req = new com.example.plateit.requests.ChatRequest(
+                query,
+                "demo_thread_id",
+                currentRecipe,
+                currentStepIndex,
+                imageBase64);
+
+        com.example.plateit.api.RetrofitClient.getService().chat(req)
+                .enqueue(new retrofit2.Callback<com.example.plateit.responses.ChatResponse>() {
+                    @Override
+                    public void onResponse(retrofit2.Call<com.example.plateit.responses.ChatResponse> call,
+                            retrofit2.Response<com.example.plateit.responses.ChatResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            com.example.plateit.responses.ChatResponse resp = response.body();
+
+                            // Show text
+                            String reply = resp.getChatBubble();
+                            cvAssistantResponse.setVisibility(View.VISIBLE);
+                            tvAssistantText.setText(reply);
+
+                            // Speak
+                            speak(reply);
+                        } else {
+                            Toast.makeText(CookingModeActivity.this, "Server rejected request", Toast.LENGTH_SHORT)
+                                    .show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(retrofit2.Call<com.example.plateit.responses.ChatResponse> call,
+                            Throwable t) {
+                        Toast.makeText(CookingModeActivity.this, "Network Error: " + t.getMessage(), Toast.LENGTH_SHORT)
+                                .show();
+                    }
+                });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == CAMERA_REQUEST_CODE && resultCode == RESULT_OK) {
+            android.os.Bundle extras = data.getExtras();
+            android.graphics.Bitmap imageBitmap = (android.graphics.Bitmap) extras.get("data");
+
+            // Send image to agent
+            handleUserQuery("Analyze this photo of my cooking. Does it look right?", imageBitmap);
+        }
+    }
+
+    // --- Voice Recognition ---
+
+    private void initializeSpeechRecognizer() {
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+        speechRecognizer.setRecognitionListener(new RecognitionListener() {
+            @Override
+            public void onReadyForSpeech(Bundle params) {
+                btnMic.setImageTintList(getColorStateList(android.R.color.holo_red_light));
+                Toast.makeText(CookingModeActivity.this, "Listening...", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onBeginningOfSpeech() {
+            }
+
+            @Override
+            public void onRmsChanged(float rmsdB) {
+            }
+
+            @Override
+            public void onBufferReceived(byte[] buffer) {
+            }
+
+            @Override
+            public void onEndOfSpeech() {
+                stopListening();
+            }
+
+            @Override
+            public void onError(int error) {
+                stopListening();
+                // Toast.makeText(CookingModeActivity.this, "Error: " + error,
+                // Toast.LENGTH_SHORT).show();
+                btnMic.setImageTintList(getColorStateList(R.color.black));
+            }
+
+            @Override
+            public void onResults(Bundle results) {
+                ArrayList<String> data = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (data != null && !data.isEmpty()) {
+                    String spokenText = data.get(0);
+                    handleUserQuery(spokenText);
+                }
+            }
+
+            @Override
+            public void onPartialResults(Bundle partialResults) {
+            }
+
+            @Override
+            public void onEvent(int eventType, Bundle params) {
+            }
+        });
+    }
+
+    private void startListening() {
+        isListening = true;
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        speechRecognizer.startListening(intent);
+    }
+
+    private void stopListening() {
+        isListening = false;
+        speechRecognizer.stopListening();
+        // Reset color logic if needed, simplifed here
+        btnMic.setImageTintList(getColorStateList(R.color.black));
+    }
+
+    // --- TTS ---
+
+    private void initializeTextToSpeech() {
+        textToSpeech = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeech.setLanguage(Locale.US);
+            }
+        });
+    }
+
+    private void speak(String text) {
+        if (textToSpeech != null) {
+            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null);
+        }
+    }
+
+    // --- Permissions ---
+
+    private boolean checkPermission() {
+        return ContextCompat.checkSelfPermission(this,
+                Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestPermission() {
+        ActivityCompat.requestPermissions(this,
+                new String[] { Manifest.permission.RECORD_AUDIO }, PERMISSION_REQUEST_CODE);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    // --- Helpers ---
 
     private void updateProgress(int position) {
         int total = steps.size();
         int current = position + 1;
-
         tvStepProgress.setText("Step " + current + " of " + total);
+        if (total > 0) {
+            int progress = (int) ((current / (float) total) * 100);
+            progressBar.setProgress(progress);
+        }
+    }
 
-        // Calculate progress percentage
-        int progress = (int) ((current / (float) total) * 100);
-        progressBar.setProgress(progress);
+    @Override
+    protected void onDestroy() {
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
+        if (speechRecognizer != null) {
+            speechRecognizer.destroy();
+        }
+        super.onDestroy();
     }
 
     // Animation Class
@@ -93,9 +391,9 @@ public class CookingModeActivity extends AppCompatActivity {
             int pageWidth = view.getWidth();
             int pageHeight = view.getHeight();
 
-            if (position < -1) { // [-Infinity,-1)
+            if (position < -1) {
                 view.setAlpha(0f);
-            } else if (position <= 1) { // [-1,1]
+            } else if (position <= 1) {
                 float scaleFactor = Math.max(MIN_SCALE, 1 - Math.abs(position));
                 float vertMargin = pageHeight * (1 - scaleFactor) / 2;
                 float horzMargin = pageWidth * (1 - scaleFactor) / 2;
@@ -109,7 +407,7 @@ public class CookingModeActivity extends AppCompatActivity {
                 view.setAlpha(MIN_ALPHA +
                         (scaleFactor - MIN_SCALE) /
                                 (1 - MIN_SCALE) * (1 - MIN_ALPHA));
-            } else { // (1,+Infinity]
+            } else {
                 view.setAlpha(0f);
             }
         }

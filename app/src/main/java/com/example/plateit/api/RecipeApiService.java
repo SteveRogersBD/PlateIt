@@ -27,4 +27,7 @@ public interface RecipeApiService {
 
     @POST("/signup")
     Call<AuthResponse> signup(@Body SignUpRequest body);
+
+    @POST("/chat")
+    Call<com.example.plateit.responses.ChatResponse> chat(@Body com.example.plateit.requests.ChatRequest body);
 }

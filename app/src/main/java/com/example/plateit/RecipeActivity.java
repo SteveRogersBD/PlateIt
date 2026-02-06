@@ -26,10 +26,19 @@ public class RecipeActivity extends AppCompatActivity {
                 .getSerializableExtra("recipe_data");
 
         // Buttons
+        // Buttons
         findViewById(R.id.btnStartCooking).setOnClickListener(v -> {
             if (recipe != null && recipe.getSteps() != null) {
                 android.content.Intent intent = new android.content.Intent(this, CookingModeActivity.class);
                 intent.putStringArrayListExtra("steps_list", new java.util.ArrayList<>(recipe.getSteps()));
+
+                // Convert Response to Model for Intent passing
+                com.example.plateit.models.Recipe recipeModel = new com.example.plateit.models.Recipe(
+                        recipe.getName(),
+                        recipe.getSteps(),
+                        recipe.getIngredients());
+                intent.putExtra("recipe_object", recipeModel);
+
                 startActivity(intent);
             } else {
                 android.widget.Toast.makeText(this, "No steps available!", android.widget.Toast.LENGTH_SHORT).show();
