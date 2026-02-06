@@ -22,6 +22,10 @@ class SigninRequest(BaseModel):
     email: str
     password: str
 
+class UpdatePreferencesRequest(BaseModel):
+    user_id: uuid.UUID
+    preferences: list[str]
+
 class AuthResponse(BaseModel):
     user_id: uuid.UUID
     email: str
@@ -72,6 +76,46 @@ def signin(request: SigninRequest, session: Session = Depends(get_session)):
         username=user.username,
         message="Login successful"
     )
+
+@app.post("/preferences/update")
+def update_preferences(request: UpdatePreferencesRequest, session: Session = Depends(get_session)):
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.preferences = request.preferences
+    session.add(user)
+    session.commit()
+    
+    return {"message": "Preferences updated", "preferences": user.preferences}
+
+@app.get("/preferences/{user_id}")
+def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session)):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    return {"preferences": user.preferences}
+
+@app.post("/preferences/update")
+def update_preferences(request: UpdatePreferencesRequest, session: Session = Depends(get_session)):
+    user = session.get(User, request.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user.preferences = request.preferences
+    session.add(user)
+    session.commit()
+    
+    return {"message": "Preferences updated", "preferences": user.preferences}
+
+@app.get("/preferences/{user_id}")
+def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session)):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    return {"preferences": user.preferences}
 
 # --- Existing Recipe Extraction ---
 class VideoRequest(BaseModel):

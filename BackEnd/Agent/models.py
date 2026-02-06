@@ -14,6 +14,7 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     dp_url: Optional[str] = None
+    preferences: List[str] = Field(default=[], sa_column=Column(JSON))
 
 
 # 2. PantryItems
