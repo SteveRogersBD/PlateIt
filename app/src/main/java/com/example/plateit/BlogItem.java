@@ -1,20 +1,48 @@
 package com.example.plateit;
 
-public class BlogItem {
-    private String title;
-    private String category;
-    private String imageUrl; // Placeholder for now
+import com.google.gson.annotations.SerializedName;
 
-    public BlogItem(String title, String category) {
+public class BlogItem {
+    @SerializedName("title")
+    private String title;
+
+    @SerializedName("link")
+    private String link;
+
+    @SerializedName("snippet")
+    private String snippet;
+
+    @SerializedName("source")
+    private String source;
+
+    @SerializedName("thumbnail")
+    private String thumbnail;
+
+    public BlogItem(String title, String link, String snippet, String source, String thumbnail) {
         this.title = title;
-        this.category = category;
+        this.link = link;
+        this.snippet = snippet;
+        this.source = source;
+        this.thumbnail = thumbnail;
     }
 
     public String getTitle() {
         return title;
     }
 
-    public String getCategory() {
-        return category;
+    public String getLink() {
+        return link;
+    }
+
+    public String getSnippet() {
+        return snippet;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public String getThumbnail() {
+        return thumbnail;
     }
 }

@@ -437,3 +437,114 @@ def get_ingredient_image_url(ingredient_name: str):
     
     return None
 
+def search_youtube_videos(query: str, limit: int = 5):
+    """
+    Searches YouTube via SerpAPI and returns a list of video objects.
+    Reuses the SERP_API_KEY from environment variables.
+    """
+    api_key = os.getenv("SERP_API_KEY")
+    if not api_key:
+        print("Error: SERP_API_KEY not configured.")
+        return []
+
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "youtube",
+        "search_query": query,
+        "api_key": api_key,
+        "num": limit 
+    }
+    
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        videos = []
+        if "video_results" in data:
+            for item in data["video_results"]:
+                videos.append({
+                    "title": item.get("title"),
+                    "link": item.get("link"),
+                    "thumbnail": item.get("thumbnail", {}).get("static"),
+                    "channel": item.get("channel", {}).get("name"),
+                    "views": item.get("views"),
+                    "length": item.get("length")
+                })
+        return videos
+    except Exception as e:
+        print(f"Error searching YouTube for '{query}': {e}")
+        return []
+
+def search_google_blogs(query: str, limit: int = 5):
+    """
+    Searches Google via SerpAPI for blog posts/articles.
+    Returns a list of blog objects.
+    """
+    api_key = os.getenv("SERP_API_KEY")
+    if not api_key:
+        print("Error: SERP_API_KEY not configured.")
+        return []
+
+    url = "https://serpapi.com/search"
+    params = {
+        "engine": "google",
+        "q": query,
+        "api_key": api_key,
+        "num": limit
+    }
+    
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        blogs = []
+        if "organic_results" in data:
+            for item in data["organic_results"]:
+                
+                # Check for "recipe" intent in title or snippet to filter out generic articles
+                title = item.get("title", "").lower()
+                snippet = item.get("snippet", "").lower()
+                if "recipe" not in title and "how to cook" not in title and "recipe" not in snippet:
+                    continue
+
+                # robust image extraction
+                thumbnail = item.get("thumbnail") 
+                
+                # Check pagemap for cse_image
+                if not thumbnail and "pagemap" in item:
+                    cse_images = item["pagemap"].get("cse_image")
+                    if cse_images and isinstance(cse_images, list) and len(cse_images) > 0:
+                        thumbnail = cse_images[0].get("src")
+                    
+                    # Check pagemap for cse_thumbnail
+                    if not thumbnail:
+                        cse_thumbs = item["pagemap"].get("cse_thumbnail")
+                        if cse_thumbs and isinstance(cse_thumbs, list) and len(cse_thumbs) > 0:
+                            thumbnail = cse_thumbs[0].get("src")
+
+                # Check rich_snippet (common in SerpApi)
+                if not thumbnail and "rich_snippet" in item:
+                    top = item["rich_snippet"].get("top", {})
+                    if "detected_extensions" in top:
+                        thumbnail = top["detected_extensions"].get("thumbnail")
+                    if not thumbnail and "extensions" in top:
+                         # Sometimes it's a list
+                         exts = top.get("extensions", [])
+                         if isinstance(exts, list) and len(exts) > 0 and isinstance(exts[0], str):
+                             # This is usually text, ignore
+                             pass
+                
+                blogs.append({
+                    "title": item.get("title"),
+                    "link": item.get("link"),
+                    "snippet": item.get("snippet"),
+                    "source": item.get("source"),
+                    "thumbnail": thumbnail
+                })
+        return blogs
+    except Exception as e:
+        print(f"Error searching Google for '{query}': {e}")
+        return []
+

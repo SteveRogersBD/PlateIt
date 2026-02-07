@@ -47,6 +47,9 @@ public class HomeFragment extends Fragment {
         ImageView btnPaste = view.findViewById(R.id.btnPaste);
         ImageView btnScan = view.findViewById(R.id.btnScan);
 
+        // Initial State
+        btnPaste.setColorFilter(getResources().getColor(R.color.gray_600));
+
         // --- 1. Smart Link Detection Logic ---
         etPasteUrl.addTextChangedListener(new TextWatcher() {
             @Override
@@ -56,15 +59,23 @@ public class HomeFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 String text = s.toString().toLowerCase();
+                btnPaste.clearColorFilter(); // Clear legacy ColorFilter
+                btnPaste.setImageTintList(null); // Clear modern ImageTintList
+
                 if (text.contains("youtube.com") || text.contains("youtu.be")) {
-                    // It's a YouTube link, maybe show a YouTube icon?
-                    // For now, let's just ensure the "Go" button is prominent
-                    btnPaste.setColorFilter(getResources().getColor(android.R.color.holo_red_dark));
-                } else if (text.contains("http")) {
-                    // Generic Link
-                    btnPaste.setColorFilter(getResources().getColor(R.color.app_primary));
+                    btnPaste.setImageResource(R.drawable.youtube);
+                } else if (text.contains("instagram.com")) {
+                    btnPaste.setImageResource(R.drawable.instagram);
+                } else if (text.contains("twitter.com") || text.contains("x.com")) {
+                    btnPaste.setImageResource(R.drawable.twitter);
+                } else if (text.contains("facebook.com")) {
+                    btnPaste.setImageResource(R.drawable.facebook);
+                } else if (text.contains("http") || text.contains("www.")) {
+                    // Generic Link -> use the 'www' drawable
+                    btnPaste.setImageResource(R.drawable.www);
                 } else {
-                    // Just text
+                    // Just text -> Revert to send icon with tech_black tint
+                    btnPaste.setImageResource(android.R.drawable.ic_menu_send);
                     btnPaste.setColorFilter(getResources().getColor(R.color.tech_black));
                 }
             }
@@ -85,20 +96,15 @@ public class HomeFragment extends Fragment {
         // });
 
         btnPaste.setOnClickListener(v -> {
+
             String url = etPasteUrl.getText().toString().trim();
             if (url.isEmpty()) {
                 Toast.makeText(getContext(), "Please enter a link or question", Toast.LENGTH_SHORT).show();
                 return;
             }
+
             extractRecipe(url);
         });
-
-        // Mock Data
-        List<RecipeVideo> mockData = new ArrayList<>();
-        mockData.add(new RecipeVideo("15-Minute Creamy Pasta", "15 min", R.drawable.ic_launcher_background));
-        mockData.add(new RecipeVideo("Crispy Air Fryer Chicken", "25 min", R.drawable.ic_launcher_background));
-        mockData.add(new RecipeVideo("Ultimate Chocolate Cake", "1 hr", R.drawable.ic_launcher_background));
-        mockData.add(new RecipeVideo("Spicy Garlic Noodles", "10 min", R.drawable.ic_launcher_background));
 
         // --- 3. RecyclerView Setup ---
 
@@ -107,13 +113,8 @@ public class HomeFragment extends Fragment {
                 false);
         rvRecipes.setLayoutManager(videoLayoutManager);
 
-        List<RecipeVideo> mockVideos = new ArrayList<>();
-        mockVideos.add(new RecipeVideo("15-Minute Creamy Pasta", "15 min", R.drawable.ic_launcher_background));
-        mockVideos.add(new RecipeVideo("Crispy Air Fryer Chicken", "25 min", R.drawable.ic_launcher_background));
-        mockVideos.add(new RecipeVideo("Ultimate Chocolate Cake", "1 hr", R.drawable.ic_launcher_background));
-        mockVideos.add(new RecipeVideo("Spicy Garlic Noodles", "10 min", R.drawable.ic_launcher_background));
-
-        VideoAdapter videoAdapter = new VideoAdapter(mockVideos);
+        // Initialize with empty list
+        VideoAdapter videoAdapter = new VideoAdapter(new ArrayList<>(), this::showVideoOptionsDialog);
         rvRecipes.setAdapter(videoAdapter);
 
         // Blogs (Horizontal)
@@ -122,16 +123,129 @@ public class HomeFragment extends Fragment {
                 false);
         rvBlogs.setLayoutManager(blogLayoutManager);
 
-        List<BlogItem> mockBlogs = new ArrayList<>();
-        mockBlogs.add(new BlogItem("The Secret to Perfect Sourdough", "BAKING"));
-        mockBlogs.add(new BlogItem("5 Knife Skills You Need", "SKILLS"));
-        mockBlogs.add(new BlogItem("Best Umami Bombs", "TIPS"));
-        mockBlogs.add(new BlogItem("History of Ramen", "CULTURE"));
-
-        BlogAdapter blogAdapter = new BlogAdapter(mockBlogs);
+        // Initialize Blog Adapter
+        BlogAdapter blogAdapter = new BlogAdapter(new ArrayList<>(), this::showBlogOptionsDialog);
         rvBlogs.setAdapter(blogAdapter);
 
+        // Fetch Real Data
+        com.example.plateit.utils.SessionManager sessionManager = new com.example.plateit.utils.SessionManager(
+                getContext());
+        String userId = sessionManager.getUserId();
+
+        if (userId != null) {
+            fetchVideoRecommendations(userId, videoAdapter);
+            fetchBlogRecommendations(userId, blogAdapter);
+        } else {
+            // Fallback or Prompt Login
+            Toast.makeText(getContext(), "Please sign in for recommendations", Toast.LENGTH_SHORT).show();
+        }
+
+        // Chat FAB
+        com.google.android.material.floatingactionbutton.FloatingActionButton fabChat = view
+                .findViewById(R.id.fabChat);
+        fabChat.setOnClickListener(v ->
+
+        showChatBottomSheet());
+
         return view;
+    }
+
+    private void fetchVideoRecommendations(String userId, VideoAdapter adapter) {
+        RetrofitClient.getService().getRecommendations(userId)
+                .enqueue(new Callback<com.example.plateit.responses.VideoRecommendationResponse>() {
+                    @Override
+                    public void onResponse(Call<com.example.plateit.responses.VideoRecommendationResponse> call,
+                            Response<com.example.plateit.responses.VideoRecommendationResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<RecipeVideo> videos = response.body().getVideos();
+                            if (videos != null && !videos.isEmpty()) {
+                                adapter.updateData(videos);
+                            }
+                        } else {
+                            // Silent failure or log
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<com.example.plateit.responses.VideoRecommendationResponse> call,
+                            Throwable t) {
+                        // Network error
+                        Toast.makeText(getContext(), "Network error loading videos", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void fetchBlogRecommendations(String userId, BlogAdapter adapter) {
+        RetrofitClient.getService().getBlogRecommendations(userId)
+                .enqueue(new Callback<com.example.plateit.responses.BlogRecommendationResponse>() {
+                    @Override
+                    public void onResponse(Call<com.example.plateit.responses.BlogRecommendationResponse> call,
+                            Response<com.example.plateit.responses.BlogRecommendationResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            List<BlogItem> blogs = response.body().getBlogs();
+                            if (blogs != null && !blogs.isEmpty()) {
+                                android.util.Log.d("HomeFragment", "Fetched " + blogs.size() + " blogs");
+                                adapter.updateData(blogs);
+                            } else {
+                                android.util.Log.e("HomeFragment", "Blog list is empty or null");
+                            }
+                        } else {
+                            android.util.Log.e("HomeFragment", "Blog API Failed: " + response.code());
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<com.example.plateit.responses.BlogRecommendationResponse> call,
+                            Throwable t) {
+                        android.util.Log.e("HomeFragment", "Blog Network Error: " + t.getMessage(), t);
+                    }
+                });
+    }
+
+    private void showBlogOptionsDialog(BlogItem blog) {
+        com.google.android.material.bottomsheet.BottomSheetDialog bottomSheetDialog = new com.google.android.material.bottomsheet.BottomSheetDialog(
+                requireContext());
+        View sheetView = getLayoutInflater().inflate(R.layout.dialog_blog_options, null);
+        bottomSheetDialog.setContentView(sheetView);
+
+        ImageView imgHeader = sheetView.findViewById(R.id.imgBlogHeader);
+        android.widget.TextView tvTitle = sheetView.findViewById(R.id.tvBlogTitle);
+        android.widget.TextView tvSource = sheetView.findViewById(R.id.tvBlogSource);
+        android.widget.TextView tvSnippet = sheetView.findViewById(R.id.tvBlogSnippet);
+
+        View btnExtract = sheetView.findViewById(R.id.btnExtractRecipe);
+        View btnRead = sheetView.findViewById(R.id.btnReadOnSite);
+
+        tvTitle.setText(blog.getTitle());
+        tvSource.setText(blog.getSource());
+        tvSnippet.setText(blog.getSnippet());
+
+        if (blog.getThumbnail() != null && !blog.getThumbnail().isEmpty()) {
+            com.squareup.picasso.Picasso.get().load(blog.getThumbnail()).into(imgHeader);
+        } else {
+            imgHeader.setImageResource(R.drawable.ic_launcher_background);
+        }
+
+        btnExtract.setOnClickListener(v -> {
+            bottomSheetDialog.dismiss();
+            extractRecipe(blog.getLink());
+        });
+
+        btnRead.setOnClickListener(v -> {
+            bottomSheetDialog.dismiss();
+            if (blog.getLink() != null) {
+                android.content.Intent intent = new android.content.Intent(getContext(), BlogReaderActivity.class);
+                intent.putExtra("blog_url", blog.getLink());
+                startActivity(intent);
+            }
+        });
+
+        bottomSheetDialog.show();
+    }
+
+    private void showChatBottomSheet() {
+        android.content.Intent intent = new android.content.Intent(getContext(), ChatActivity.class);
+        startActivity(intent);
     }
 
     // --- Vision Launchers ---
@@ -193,6 +307,48 @@ public class HomeFragment extends Fragment {
         btnGallery.setOnClickListener(v -> {
             bottomSheetDialog.dismiss();
             galleryLauncher.launch("image/*");
+        });
+
+        bottomSheetDialog.show();
+    }
+
+    private void showVideoOptionsDialog(RecipeVideo video) {
+        com.google.android.material.bottomsheet.BottomSheetDialog bottomSheetDialog = new com.google.android.material.bottomsheet.BottomSheetDialog(
+                requireContext());
+        View sheetView = getLayoutInflater().inflate(R.layout.dialog_video_options, null);
+        bottomSheetDialog.setContentView(sheetView);
+
+        android.widget.ImageView imgThumbnail = sheetView.findViewById(R.id.imgVideoThumbnail);
+        android.widget.TextView tvTitle = sheetView.findViewById(R.id.tvVideoTitle);
+        android.widget.TextView tvChannel = sheetView.findViewById(R.id.tvVideoChannel);
+        View btnExtract = sheetView.findViewById(R.id.btnExtractRecipe);
+        View btnWatch = sheetView.findViewById(R.id.btnWatchVideo);
+
+        tvTitle.setText(video.getTitle());
+        tvChannel.setText(video.getChannel() + " • " + (video.getViews() != null ? video.getViews() + " views" : ""));
+
+        if (video.getThumbnail() != null && !video.getThumbnail().isEmpty()) {
+            com.squareup.picasso.Picasso.get()
+                    .load(video.getThumbnail())
+                    .placeholder(R.drawable.ic_launcher_background)
+                    .error(R.drawable.ic_launcher_background)
+                    .into(imgThumbnail);
+        } else {
+            imgThumbnail.setImageResource(R.drawable.ic_launcher_background);
+        }
+
+        btnExtract.setOnClickListener(v -> {
+            bottomSheetDialog.dismiss();
+            extractRecipe(video.getLink());
+        });
+
+        btnWatch.setOnClickListener(v -> {
+            bottomSheetDialog.dismiss();
+            if (video.getLink() != null) {
+                android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse(video.getLink()));
+                startActivity(intent);
+            }
         });
 
         bottomSheetDialog.show();

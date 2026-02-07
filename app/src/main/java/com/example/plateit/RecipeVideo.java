@@ -1,25 +1,58 @@
 package com.example.plateit;
 
-public class RecipeVideo {
-    private String title;
-    private String time;
-    private int thumbnailResId;
+import com.google.gson.annotations.SerializedName;
 
-    public RecipeVideo(String title, String time, int thumbnailResId) {
+public class RecipeVideo {
+    @SerializedName("title")
+    private String title;
+
+    @SerializedName("link")
+    private String link;
+
+    @SerializedName("thumbnail")
+    private String thumbnail;
+
+    @SerializedName("channel")
+    private String channel;
+
+    @SerializedName("views")
+    private String views;
+
+    @SerializedName("length")
+    private String length;
+
+    // Constructor
+    public RecipeVideo(String title, String link, String thumbnail, String channel, String views, String length) {
         this.title = title;
-        this.time = time;
-        this.thumbnailResId = thumbnailResId;
+        this.link = link;
+        this.thumbnail = thumbnail;
+        this.channel = channel;
+        this.views = views;
+        this.length = length;
     }
 
+    // Getters
     public String getTitle() {
         return title;
     }
 
-    public String getTime() {
-        return time;
+    public String getLink() {
+        return link;
     }
 
-    public int getThumbnailResId() {
-        return thumbnailResId;
+    public String getThumbnail() {
+        return thumbnail;
+    }
+
+    public String getChannel() {
+        return channel;
+    }
+
+    public String getViews() {
+        return views;
+    }
+
+    public String getLength() {
+        return length;
     }
 }

@@ -35,7 +35,7 @@ tools = [
 ]
 
 # The "Chef" model
-llm = ChatGoogleGenerai(model="gemini-3-flash-preview", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0)
 llm_with_tools = llm.bind_tools(tools)
 
 # The "Waiter" model (Structural output)

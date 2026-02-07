@@ -102,7 +102,6 @@
                 android:layout_height="24dp"
                 android:layout_marginEnd="16dp"
                 android:src="@android:drawable/ic_menu_send"
-                app:tint="@color/app_primary"
                 android:tooltipText="Go / Paste" />
 
             <!-- Camera (Vision) -->
@@ -209,5 +208,18 @@
                 
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabChat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="Chat with Chef"
+        android:src="@drawable/ic_chat"
+        app:backgroundTint="@color/app_primary"
+        app:tint="@color/tech_black"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -4,8 +4,9 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClient {
-    // If testing on Emulator, 10.0.2.2 points to your computer's localhost
-    private static final String BASE_URL = "http://10.0.2.2:8000/";
+    // Updated to local IP for physical device testing. Ensure your phone is on the
+    // same WiFi.
+    private static final String BASE_URL = "http://192.168.86.248:8000/";
     private static Retrofit recipefit = null;
 
     public static RecipeApiService getService() {

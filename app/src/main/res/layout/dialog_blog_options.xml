@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp">
+
+        <ImageView
+            android:id="@+id/imgBlogHeader"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_launcher_background" />
+            
+    </androidx.cardview.widget.CardView>
+
+    <TextView
+        android:id="@+id/tvBlogTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Blog Post Title"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@color/tech_black" />
+        
+    <TextView
+        android:id="@+id/tvBlogSource"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Source Name"
+        android:textColor="@color/app_primary"
+        android:textStyle="bold"
+        android:textSize="14sp" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:layout_marginTop="12dp"
+        android:fillViewport="true">
+        
+        <TextView
+            android:id="@+id/tvBlogSnippet"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="This is a short snippet of the blog post content..."
+            android:textColor="@color/gray_800"
+            android:textSize="16sp"
+            android:lineSpacingExtra="4dp"/>
+    </ScrollView>
+
+    <!-- Action Buttons -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnExtractRecipe"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="24dp"
+        android:text="Extract Recipe"
+        android:textSize="16sp"
+        app:cornerRadius="12dp"
+        app:backgroundTint="@color/app_primary"
+        android:textColor="@color/tech_black" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnReadOnSite"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="8dp"
+        android:text="Read on Site"
+        android:textSize="16sp"
+        app:cornerRadius="12dp"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:textColor="@color/tech_black"
+        app:strokeColor="@color/gray_600" />
+
+</LinearLayout>

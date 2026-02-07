@@ -1,5 +1,7 @@
 package com.example.plateit;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -7,14 +9,21 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.squareup.picasso.Picasso;
 import java.util.List;
 
 public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHolder> {
 
     private List<RecipeVideo> videoList;
+    private OnVideoClickListener listener;
 
-    public VideoAdapter(List<RecipeVideo> videoList) {
+    public interface OnVideoClickListener {
+        void onVideoClick(RecipeVideo video);
+    }
+
+    public VideoAdapter(List<RecipeVideo> videoList, OnVideoClickListener listener) {
         this.videoList = videoList;
+        this.listener = listener;
     }
 
     @NonNull
@@ -28,15 +37,33 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     public void onBindViewHolder(@NonNull VideoViewHolder holder, int position) {
         RecipeVideo video = videoList.get(position);
         holder.title.setText(video.getTitle());
-        holder.time.setText(video.getTime());
-        holder.thumbnail.setImageResource(video.getThumbnailResId());
-        // For the mock, we can just set a random background color or image if needed,
-        // but the resourceId is enough for now.
+        holder.time.setText(video.getLength() != null ? video.getLength() : "");
+
+        // Load thumbnail using Picasso
+        if (video.getThumbnail() != null && !video.getThumbnail().isEmpty()) {
+            Picasso.get()
+                    .load(video.getThumbnail())
+                    .placeholder(R.drawable.ic_launcher_background) // Consider adding a proper placeholder drawable
+                    .error(R.drawable.ic_launcher_background)
+                    .into(holder.thumbnail);
+        }
+
+        // Handle click to open dialog
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onVideoClick(video);
+            }
+        });
     }
 
     @Override
     public int getItemCount() {
         return videoList.size();
+    }
+
+    public void updateData(List<RecipeVideo> newVideos) {
+        this.videoList = newVideos;
+        notifyDataSetChanged();
     }
 
     public static class VideoViewHolder extends RecyclerView.ViewHolder {

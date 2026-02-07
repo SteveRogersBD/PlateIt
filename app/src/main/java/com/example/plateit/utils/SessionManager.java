@@ -32,4 +32,8 @@ public class SessionManager {
     public boolean isLoggedIn() {
         return pref.getBoolean(IS_LOGGED_IN, false);
     }
+
+    public String getUserId() {
+        return pref.getString(KEY_USER_ID, null);
+    }
 }

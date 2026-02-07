@@ -8,6 +8,8 @@ import os
 from better_agent import workflow as recipe_workflow
 from database import get_session, create_db_and_tables
 from models import User
+from tools import search_youtube_videos
+import random
 
 app = FastAPI()
 
@@ -116,6 +118,97 @@ def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session))
         raise HTTPException(status_code=404, detail="User not found")
         
     return {"preferences": user.preferences}
+
+# --- Video Recommendation Endpoint ---
+@app.get("/recommendations/videos/{user_id}")
+def get_video_recommendations(user_id: uuid.UUID, session: Session = Depends(get_session)):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    preferences = user.preferences if user.preferences else []
+    all_videos = []
+    seen_links = set()
+
+    # Strategy: diverse sampling
+    # If user has > 3 preferences, pick 3 random ones to mix.
+    # If <= 3, use all of them.
+    if len(preferences) > 3:
+        target_prefs = random.sample(preferences, 3)
+    else:
+        target_prefs = preferences
+
+    # Prepare queries
+    queries = []
+    if not target_prefs:
+        queries.append("trending cooking recipes")
+    else:
+        for p in target_prefs:
+            queries.append(f"{p} recipes")
+
+    print(f"Fetching videos for topics: {queries}")
+
+    # Fetch and Aggregate
+    for q in queries:
+        # We fetch ~5 videos per topic
+        videos = search_youtube_videos(q, limit=5)
+        
+        # Check if output is a list (tool returns list on success)
+        if isinstance(videos, list):
+            for v in videos:
+                if v.get('link') and v['link'] not in seen_links:
+                    all_videos.append(v)
+                    seen_links.add(v['link'])
+    
+    # Shuffle results to mix "Italian" and "Dessert" videos together
+    random.shuffle(all_videos)
+    
+    return {"videos": all_videos}
+
+# --- Blog Recommendation Endpoint ---
+from tools import search_google_blogs
+
+@app.get("/recommendations/blogs/{user_id}")
+def get_blog_recommendations(user_id: uuid.UUID, session: Session = Depends(get_session)):
+    user = session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    preferences = user.preferences if user.preferences else []
+    all_blogs = []
+    seen_links = set()
+
+    # Strategy: diverse sampling
+    if len(preferences) > 3:
+        target_prefs = random.sample(preferences, 3)
+    else:
+        target_prefs = preferences
+
+    # Prepare queries
+    queries = []
+    if not target_prefs:
+        queries.append("popular food blogs recipes")
+    else:
+        for p in target_prefs:
+            queries.append(f"best {p} food blog recipe -site:youtube.com") # Exclude YouTube
+
+    print(f"Fetching blogs for topics: {queries}")
+
+    # Fetch and Aggregate
+    for q in queries:
+        # We fetch ~5 blogs per topic
+        blogs = search_google_blogs(q, limit=5)
+        
+        if isinstance(blogs, list):
+            for b in blogs:
+                if b.get('link') and b['link'] not in seen_links:
+                    all_blogs.append(b)
+                    seen_links.add(b['link'])
+    
+    # Shuffle results
+    random.shuffle(all_blogs)
+    
+    return {"blogs": all_blogs}
 
 # --- Existing Recipe Extraction ---
 class VideoRequest(BaseModel):

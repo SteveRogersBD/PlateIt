@@ -10,12 +10,25 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.List;
 
+import com.squareup.picasso.Picasso;
+
 public class BlogAdapter extends RecyclerView.Adapter<BlogAdapter.BlogViewHolder> {
 
-    private final List<BlogItem> blogList;
+    private List<BlogItem> blogList;
+    private OnBlogClickListener listener;
 
-    public BlogAdapter(List<BlogItem> blogList) {
+    public interface OnBlogClickListener {
+        void onBlogClick(BlogItem blog);
+    }
+
+    public BlogAdapter(List<BlogItem> blogList, OnBlogClickListener listener) {
         this.blogList = blogList;
+        this.listener = listener;
+    }
+
+    public void updateData(List<BlogItem> newBlogs) {
+        this.blogList = newBlogs;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -29,9 +42,18 @@ public class BlogAdapter extends RecyclerView.Adapter<BlogAdapter.BlogViewHolder
     public void onBindViewHolder(@NonNull BlogViewHolder holder, int position) {
         BlogItem item = blogList.get(position);
         holder.tvTitle.setText(item.getTitle());
-        holder.tvCategory.setText(item.getCategory());
-        // holder.imgThumbnail.setImageResource(item.getImageResId());
-        // For production, use Glide/Picasso here.
+        holder.tvCategory.setText(item.getSource()); // Use Source as Category
+
+        if (item.getThumbnail() != null && !item.getThumbnail().isEmpty()) {
+            Picasso.get().load(item.getThumbnail()).into(holder.imgThumbnail);
+        } else {
+            holder.imgThumbnail.setImageResource(R.drawable.ic_launcher_background);
+        }
+
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null)
+                listener.onBlogClick(item);
+        });
     }
 
     @Override
