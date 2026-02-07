@@ -35,7 +35,7 @@ public interface RecipeApiService {
     Call<com.example.plateit.responses.VideoRecommendationResponse> getRecommendations(
             @retrofit2.http.Path("user_id") String userId);
 
-    @retrofit2.http.GET("/recommendations/blogs/{user_id}")
-    Call<com.example.plateit.responses.BlogRecommendationResponse> getBlogRecommendations(
-            @retrofit2.http.Path("user_id") String userId);
+//    @retrofit2.http.GET("/recommendations/blogs/{user_id}")
+//    Call<com.example.plateit.responses.BlogRecommendationResponse> getBlogRecommendations(
+//            @retrofit2.http.Path("user_id") String userId);
 }

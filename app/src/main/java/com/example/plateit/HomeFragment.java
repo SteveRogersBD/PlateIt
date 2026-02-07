@@ -27,6 +27,7 @@ import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import com.example.plateit.api.SerpApiClient;
 
 public class HomeFragment extends Fragment {
 
@@ -176,28 +177,66 @@ public class HomeFragment extends Fragment {
     }
 
     private void fetchBlogRecommendations(String userId, BlogAdapter adapter) {
-        RetrofitClient.getService().getBlogRecommendations(userId)
-                .enqueue(new Callback<com.example.plateit.responses.BlogRecommendationResponse>() {
+        // Use SerpApi directly from Android
+        String apiKey = BuildConfig.SERP_API_KEY;
+        if (apiKey == null || apiKey.isEmpty()) {
+            Toast.makeText(getContext(), "SerpApi Key Missing", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Default query since we don't have easy access to user prefs unless fetched
+        // first.
+        String query = "best food blogs recipes 2024 -site:youtube.com";
+
+        // Use the newly created SerpApiClient
+        SerpApiClient.getService().search("google", query, apiKey, 8)
+                .enqueue(new Callback<RecipeBlogs>() {
                     @Override
-                    public void onResponse(Call<com.example.plateit.responses.BlogRecommendationResponse> call,
-                            Response<com.example.plateit.responses.BlogRecommendationResponse> response) {
+                    public void onResponse(Call<RecipeBlogs> call, Response<RecipeBlogs> response) {
                         if (response.isSuccessful() && response.body() != null) {
-                            List<BlogItem> blogs = response.body().getBlogs();
-                            if (blogs != null && !blogs.isEmpty()) {
-                                android.util.Log.d("HomeFragment", "Fetched " + blogs.size() + " blogs");
-                                adapter.updateData(blogs);
-                            } else {
-                                android.util.Log.e("HomeFragment", "Blog list is empty or null");
+                            RecipeBlogs blogResponse = response.body();
+                            List<BlogItem> blogs = new ArrayList<>();
+
+                            // Check organic results
+                            if (blogResponse.organic_results != null) {
+                                for (RecipeBlogs.OrganicResult result : blogResponse.organic_results) {
+                                    if (result.title != null && result.link != null) {
+                                        // Use the thumbnail field directly from POJO
+                                        String thumbnail = result.thumbnail;
+                                        String source = result.source != null ? result.source : "Web";
+
+                                        blogs.add(new BlogItem(result.title, result.link, thumbnail, source,
+                                                result.snippet));
+                                    }
+                                }
                             }
+
+                            // Also check recipes_results if available
+                            if (blogResponse.recipes_results != null) {
+                                for (RecipeBlogs.RecipesResult result : blogResponse.recipes_results) {
+                                    if (result.title != null && result.link != null) {
+                                        String thumbnail = result.thumbnail;
+                                        String source = result.source != null ? result.source : "Recipe";
+                                        // Snippet might be missing in recipes_results, use ingredients count?
+                                        String snippet = (result.ingredients != null
+                                                ? result.ingredients.size() + " ingredients"
+                                                : "");
+
+                                        blogs.add(new BlogItem(result.title, result.link, thumbnail, source, snippet));
+                                    }
+                                }
+                            }
+                            Toast.makeText(getContext(), blogs.get(0).getThumbnail(),
+                                    Toast.LENGTH_LONG).show();
+                            adapter.updateData(blogs);
                         } else {
-                            android.util.Log.e("HomeFragment", "Blog API Failed: " + response.code());
+                            android.util.Log.e("HomeFragment", "SerpApi Failed: " + response.code());
                         }
                     }
 
                     @Override
-                    public void onFailure(Call<com.example.plateit.responses.BlogRecommendationResponse> call,
-                            Throwable t) {
-                        android.util.Log.e("HomeFragment", "Blog Network Error: " + t.getMessage(), t);
+                    public void onFailure(Call<RecipeBlogs> call, Throwable t) {
+                        android.util.Log.e("HomeFragment", "SerpApi Network Error: " + t.getMessage(), t);
                     }
                 });
     }

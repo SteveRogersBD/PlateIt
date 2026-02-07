@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
 }
@@ -14,6 +17,17 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        val properties = Properties()
+        val localPropertiesFile = project.rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+             properties.load(FileInputStream(localPropertiesFile))
+        }
+        buildConfigField("String", "SERP_API_KEY", "\"${properties.getProperty("SERP_API_KEY")}\"")
+    }
+    
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -42,4 +56,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.17.0")
 }
