@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="200dp"
         android:scaleType="centerCrop"
-        android:background="@color/gray_200"
+        android:background="#E0E0E0"
         android:contentDescription="Recipe Image" />
 
     <!-- Recipe Title -->
@@ -24,7 +24,7 @@
         android:text="Recipe Name"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:textColor="@color/tech_black" />
+        android:textColor="@android:color/black" />
 
     <!-- Ready Time -->
     <TextView
@@ -34,7 +34,7 @@
         android:layout_marginTop="8dp"
         android:text="Ready in 30 mins"
         android:textSize="14sp"
-        android:textColor="@color/gray_600"
+        android:textColor="#757575"
         android:drawableStart="@android:drawable/ic_menu_recent_history"
         android:drawablePadding="8dp" />
 
@@ -44,7 +44,7 @@
         android:layout_height="1dp"
         android:layout_marginTop="16dp"
         android:layout_marginBottom="16dp"
-        android:background="@color/gray_300" />
+        android:background="#BDBDBD" />
 
     <!-- Info Text -->
     <TextView
@@ -52,7 +52,7 @@
         android:layout_height="wrap_content"
         android:text="Want to see the full recipe or start cooking right away?"
         android:textSize="14sp"
-        android:textColor="@color/gray_700"
+        android:textColor="#616161"
         android:gravity="center" />
 
     <!-- Buttons -->

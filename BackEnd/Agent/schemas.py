@@ -9,6 +9,8 @@ class RecipeCard(BaseModel):
     image_url: Optional[str] = Field(None, description="URL of the recipe image")
     ready_in_minutes: Optional[int] = Field(None, description="Preparation time in minutes")
     missed_ingredient_count: Optional[int] = Field(None, description="Number of missing ingredients (if applicable)")
+    source_url: Optional[str] = Field(None, description="URL to the original recipe source (from Spoonacular's 'sourceUrl' or 'spoonacularSourceUrl' field)")
+
 
 class IngredientItem(BaseModel):
     id: int

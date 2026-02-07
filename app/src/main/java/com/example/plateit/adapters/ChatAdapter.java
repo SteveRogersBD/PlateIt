@@ -112,7 +112,7 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 rvRecipeList.setLayoutManager(
                         new LinearLayoutManager(itemView.getContext(), LinearLayoutManager.HORIZONTAL, false));
                 rvRecipeList.setAdapter(new RecipeCardAdapter(message.getRecipeData().getItems(), recipe -> {
-                    fetchAndStartRecipe(itemView.getContext(), recipe.getId());
+                    showRecipePreviewSheet(itemView.getContext(), recipe);
                 }));
 
             } else if ("ingredient_list".equals(type) && message.getIngredientData() != null) {
@@ -142,6 +142,56 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     itemView.getContext().startActivity(intent);
                 }));
             }
+        }
+
+        private void showRecipePreviewSheet(android.content.Context context,
+                com.example.plateit.responses.ChatResponse.RecipeCard recipe) {
+            com.google.android.material.bottomsheet.BottomSheetDialog sheet = new com.google.android.material.bottomsheet.BottomSheetDialog(
+                    context);
+            View view = android.view.LayoutInflater.from(context)
+                    .inflate(com.example.plateit.R.layout.bottom_sheet_recipe_preview, null);
+            sheet.setContentView(view);
+
+            // Populate views
+            android.widget.ImageView imgPreview = view.findViewById(com.example.plateit.R.id.imgRecipePreview);
+            android.widget.TextView tvTitle = view.findViewById(com.example.plateit.R.id.tvRecipeTitle);
+            android.widget.TextView tvTime = view.findViewById(com.example.plateit.R.id.tvReadyTime);
+            com.google.android.material.button.MaterialButton btnViewFull = view
+                    .findViewById(com.example.plateit.R.id.btnViewFullRecipe);
+            com.google.android.material.button.MaterialButton btnStartCooking = view
+                    .findViewById(com.example.plateit.R.id.btnStartCooking);
+
+            tvTitle.setText(recipe.getTitle());
+            if (recipe.getReadyInMinutes() != null) {
+                tvTime.setText("Ready in " + recipe.getReadyInMinutes() + " mins");
+            } else {
+                tvTime.setVisibility(View.GONE);
+            }
+
+            if (recipe.getImageUrl() != null) {
+                com.squareup.picasso.Picasso.get().load(recipe.getImageUrl()).into(imgPreview);
+            }
+
+            // View Full Recipe button
+            btnViewFull.setOnClickListener(v -> {
+                if (recipe.getSourceUrl() != null && !recipe.getSourceUrl().isEmpty()) {
+                    android.content.Intent browserIntent = new android.content.Intent(
+                            android.content.Intent.ACTION_VIEW, android.net.Uri.parse(recipe.getSourceUrl()));
+                    context.startActivity(browserIntent);
+                    sheet.dismiss();
+                } else {
+                    android.widget.Toast
+                            .makeText(context, "Source URL not available", android.widget.Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            // Start Cooking button
+            btnStartCooking.setOnClickListener(v -> {
+                sheet.dismiss();
+                fetchAndStartRecipe(context, recipe.getId());
+            });
+
+            sheet.show();
         }
 
         private void fetchAndStartRecipe(android.content.Context context, int recipeId) {

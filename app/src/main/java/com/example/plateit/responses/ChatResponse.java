@@ -66,6 +66,7 @@ public class ChatResponse {
         private String image_url;
         private Integer ready_in_minutes; // Optional
         private Integer missed_ingredient_count; // Optional
+        private String source_url; // Optional
 
         public int getId() {
             return id;
@@ -85,6 +86,10 @@ public class ChatResponse {
 
         public Integer getMissedIngredientCount() {
             return missed_ingredient_count;
+        }
+
+        public String getSourceUrl() {
+            return source_url;
         }
     }
 
