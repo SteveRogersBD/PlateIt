@@ -1,5 +1,7 @@
 package com.example.plateit.adapters;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,11 +10,16 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.example.plateit.R;
 import com.example.plateit.models.ChatMessage;
+import com.example.plateit.VideoAdapter;
+import com.example.plateit.RecipeVideo;
 
 import java.util.List;
+import java.util.ArrayList;
 
 public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -80,15 +87,100 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     static class AIViewHolder extends RecyclerView.ViewHolder {
         TextView tvMessage;
+        RecyclerView rvRecipeList, rvIngredientList, rvVideoList;
 
         public AIViewHolder(@NonNull View itemView) {
             super(itemView);
             tvMessage = itemView.findViewById(R.id.tvMessage);
-            // AI doesn't send images for now, but could be added later
+            rvRecipeList = itemView.findViewById(R.id.rvRecipeList);
+            rvIngredientList = itemView.findViewById(R.id.rvIngredientList);
+            rvVideoList = itemView.findViewById(R.id.rvVideoList);
         }
 
         void bind(ChatMessage message) {
             tvMessage.setText(message.getMessage());
+
+            // Reset Visibility
+            rvRecipeList.setVisibility(View.GONE);
+            rvIngredientList.setVisibility(View.GONE);
+            rvVideoList.setVisibility(View.GONE);
+
+            String type = message.getUiType();
+
+            if ("recipe_list".equals(type) && message.getRecipeData() != null) {
+                rvRecipeList.setVisibility(View.VISIBLE);
+                rvRecipeList.setLayoutManager(
+                        new LinearLayoutManager(itemView.getContext(), LinearLayoutManager.HORIZONTAL, false));
+                rvRecipeList.setAdapter(new RecipeCardAdapter(message.getRecipeData().getItems(), recipe -> {
+                    fetchAndStartRecipe(itemView.getContext(), recipe.getId());
+                }));
+
+            } else if ("ingredient_list".equals(type) && message.getIngredientData() != null) {
+                rvIngredientList.setVisibility(View.VISIBLE);
+                rvIngredientList.setLayoutManager(new GridLayoutManager(itemView.getContext(), 2));
+
+                List<com.example.plateit.models.Ingredient> converted = new ArrayList<>();
+                for (com.example.plateit.responses.ChatResponse.IngredientItem item : message.getIngredientData()
+                        .getItems()) {
+                    converted.add(new com.example.plateit.models.Ingredient(
+                            item.getName(), item.getAmount(), item.getImage()));
+                }
+                rvIngredientList.setAdapter(new IngredientsAdapter(converted));
+
+            } else if ("video_list".equals(type) && message.getVideoData() != null) {
+                rvVideoList.setVisibility(View.VISIBLE);
+                rvVideoList.setLayoutManager(
+                        new LinearLayoutManager(itemView.getContext(), LinearLayoutManager.HORIZONTAL, false));
+
+                List<RecipeVideo> converted = new ArrayList<>();
+                for (com.example.plateit.responses.ChatResponse.VideoItem item : message.getVideoData().getItems()) {
+                    converted.add(new RecipeVideo(
+                            item.getTitle(), item.getUrl(), item.getThumbnail(), "", "", ""));
+                }
+                rvVideoList.setAdapter(new VideoAdapter(converted, video -> {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(video.getLink()));
+                    itemView.getContext().startActivity(intent);
+                }));
+            }
+        }
+
+        private void fetchAndStartRecipe(android.content.Context context, int recipeId) {
+            android.widget.Toast.makeText(context, "Loading recipe...", android.widget.Toast.LENGTH_SHORT).show();
+
+            com.example.plateit.api.RetrofitClient.getAgentService().getRecipeDetails(recipeId)
+                    .enqueue(new retrofit2.Callback<com.example.plateit.responses.RecipeResponse>() {
+                        @Override
+                        public void onResponse(retrofit2.Call<com.example.plateit.responses.RecipeResponse> call,
+                                retrofit2.Response<com.example.plateit.responses.RecipeResponse> response) {
+                            if (response.isSuccessful() && response.body() != null) {
+                                com.example.plateit.responses.RecipeResponse recipeResp = response.body();
+
+                                // Convert to Recipe model
+                                com.example.plateit.models.Recipe recipe = new com.example.plateit.models.Recipe(
+                                        recipeResp.getName(),
+                                        recipeResp.getSteps(),
+                                        recipeResp.getIngredients());
+
+                                // Start CookingModeActivity
+                                android.content.Intent intent = new android.content.Intent(context,
+                                        com.example.plateit.CookingModeActivity.class);
+                                intent.putExtra("recipe_object", recipe);
+                                context.startActivity(intent);
+                            } else {
+                                android.widget.Toast
+                                        .makeText(context, "Failed to load recipe", android.widget.Toast.LENGTH_SHORT)
+                                        .show();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(retrofit2.Call<com.example.plateit.responses.RecipeResponse> call,
+                                Throwable t) {
+                            android.widget.Toast
+                                    .makeText(context, "Error: " + t.getMessage(), android.widget.Toast.LENGTH_SHORT)
+                                    .show();
+                        }
+                    });
         }
     }
 }

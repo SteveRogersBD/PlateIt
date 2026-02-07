@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Recipe Image -->
+    <ImageView
+        android:id="@+id/imgRecipePreview"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:scaleType="centerCrop"
+        android:background="@color/gray_200"
+        android:contentDescription="Recipe Image" />
+
+    <!-- Recipe Title -->
+    <TextView
+        android:id="@+id/tvRecipeTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Recipe Name"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="@color/tech_black" />
+
+    <!-- Ready Time -->
+    <TextView
+        android:id="@+id/tvReadyTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Ready in 30 mins"
+        android:textSize="14sp"
+        android:textColor="@color/gray_600"
+        android:drawableStart="@android:drawable/ic_menu_recent_history"
+        android:drawablePadding="8dp" />
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/gray_300" />
+
+    <!-- Info Text -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Want to see the full recipe or start cooking right away?"
+        android:textSize="14sp"
+        android:textColor="@color/gray_700"
+        android:gravity="center" />
+
+    <!-- Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <!-- View Full Recipe Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnViewFullRecipe"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="View Full Recipe"
+            android:textColor="@color/app_primary"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            app:strokeColor="@color/app_primary"
+            app:strokeWidth="2dp" />
+
+        <!-- Start Cooking Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStartCooking"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Start Cooking"
+            android:backgroundTint="@color/app_primary"
+            android:textColor="@color/white" />
+
+    </LinearLayout>
+
+</LinearLayout>

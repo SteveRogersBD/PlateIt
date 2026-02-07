@@ -259,7 +259,7 @@ from typing import Dict, Any
 class ChatRequest(BaseModel):
     message: str
     thread_id: str
-    recipe: Dict[str, Any] # Full recipe object
+    recipe: Optional[Dict[str, Any]] = None # Full recipe object, optional for general chat
     current_step: int # 0-indexed step
     image_data: Optional[str] = None # Base64 encoded image
 
@@ -278,11 +278,13 @@ def chat_endpoint(request: ChatRequest):
     # Let's convert it here for type safety if better_agent is available.
     
     from better_agent import Recipe
-    try:
-        recipe_obj = Recipe(**request.recipe)
-    except Exception as e:
-        print(f"Warning: Could not parse recipe object: {e}")
-        recipe_obj = None
+    recipe_obj = None
+    if request.recipe:
+        try:
+            recipe_obj = Recipe(**request.recipe)
+        except Exception as e:
+            print(f"Warning: Could not parse recipe object: {e}")
+            recipe_obj = None
 
     initial_state = {
         "messages": [HumanMessage(content=request.message)],
@@ -311,6 +313,63 @@ def chat_endpoint(request: ChatRequest):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- Recipe Details Endpoint ---
+@app.get("/recipes/{recipe_id}/full")
+def get_full_recipe_details(recipe_id: int):
+    """
+    Fetches full recipe details from Spoonacular and maps to App's RecipeResponse format.
+    """
+    import os
+    import requests
+    
+    api_key = os.getenv("SPOONACULAR_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="API Key missing")
+        
+    url = f"https://api.spoonacular.com/recipes/{recipe_id}/information"
+    params = {"apiKey": api_key}
+    
+    try:
+        resp = requests.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        # Map to App Format
+        # 1. Ingredients
+        ingredients = []
+        for ing in data.get("extendedIngredients", []):
+            amount = f"{ing.get('amount', '')} {ing.get('unit', '')}".strip()
+            ingredients.append({
+                "name": ing.get("original", ing.get("name")),
+                "amount": amount,
+                "imageUrl": f"https://img.spoonacular.com/ingredients_100x100/{ing.get('image', '')}"
+            })
+            
+        # 2. Steps
+        steps = []
+        if data.get("analyzedInstructions"):
+            for step in data["analyzedInstructions"][0].get("steps", []):
+                steps.append(step.get("step"))
+        else:
+            # Fallback to splitting instructions string
+            instr = data.get("instructions", "")
+            if instr:
+                # Remove HTML tags if any
+                import re
+                clean_instr = re.sub('<[^<]+?>', '', instr)
+                steps = [s.strip() for s in clean_instr.split('.') if s.strip()]
+                
+        return {
+            "name": data.get("title"),
+            "total_time": str(data.get("readyInMinutes", 0)) + " mins",
+            "ingredients": ingredients,
+            "steps": steps
+        }
+        
+    except Exception as e:
+         print(f"Error fetching recipe {recipe_id}: {e}")
+         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

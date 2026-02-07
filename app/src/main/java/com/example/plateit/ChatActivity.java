@@ -17,6 +17,9 @@ import com.example.plateit.models.ChatMessage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.io.InputStream;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
 public class ChatActivity extends AppCompatActivity {
 
@@ -45,7 +48,7 @@ public class ChatActivity extends AppCompatActivity {
         setContentView(R.layout.activity_chat);
 
         // Toolbar
-        com.google.android.material.appbar.MaterialToolbar toolbar = findViewById(R.id.toolbar);
+        androidx.appcompat.widget.Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         toolbar.setNavigationOnClickListener(v -> onBackPressed());
 
@@ -61,24 +64,12 @@ public class ChatActivity extends AppCompatActivity {
         messageList.add(new ChatMessage(
                 "Hello! I'm your AI Chef. Ask me anything about cooking or show me your ingredients!", false));
 
-        // Reverse layout manager so newest messages are at the bottom but we fill from
-        // bottom?
-        // Actually, standardized chat view: StackFromEnd = true
+        // Use standard layout manager, let the adapter / reversed layout handle
+        // inversion visually if needed
+        // Assuming XML has scaleY=-1 for inverted effect
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        // layoutManager.setReverseLayout(true); // If we want to align to bottom like
-        // standard chat
-        // However, I set scaleY=-1 in XML, which is a trick for inverted lists.
-        // Let's stick to standard StackFromEnd for less confusion with XML scaleY
-        // unless I want to keep that trick.
-        // The XML had scaleY="-1" on RecyclerView and items. This is a common trick to
-        // keep scroll at bottom.
-        // Let's use that since I wrote it in XML.
-        layoutManager.setReverseLayout(false);
-        // data 0 is bottom.
-
-        // Wait, if I use scaleY=-1, then the list is visually inverted.
-        // Index 0 appears at the bottom.
-        // So I should add new messages to index 0.
+        layoutManager.setReverseLayout(true);
+        layoutManager.setStackFromEnd(true);
 
         rvChatMessages.setLayoutManager(layoutManager);
         chatAdapter = new ChatAdapter(messageList);
@@ -96,26 +87,82 @@ public class ChatActivity extends AppCompatActivity {
             return;
         }
 
-        // Create User Message
-        // Since we are using the scaleY=-1 trick, the 0th item is at the BOTTOM.
-        // So we should add to index 0.
+        // 1. Create User Message UI
         ChatMessage userMsg = new ChatMessage(text, true, pendingImageUri);
         messageList.add(0, userMsg);
         chatAdapter.notifyItemInserted(0);
         rvChatMessages.scrollToPosition(0);
 
-        // Reset inputs
+        // 2. Prepare Data
+        String imageBase64 = null;
+        if (pendingImageUri != null) {
+            try {
+                InputStream inputStream = getContentResolver().openInputStream(pendingImageUri);
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+
+                // Compress and Encode
+                java.io.ByteArrayOutputStream byteArrayOutputStream = new java.io.ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
+                byte[] byteArray = byteArrayOutputStream.toByteArray();
+                imageBase64 = android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Failed to process image", Toast.LENGTH_SHORT).show();
+            }
+        }
+
+        // 3. Reset Inputs
         etChatMessage.setText("");
         pendingImageUri = null;
-        btnAttachImage.setColorFilter(getColor(R.color.gray_600)); // Reset color
+        btnAttachImage.setColorFilter(getColor(R.color.gray_600));
 
-        // Mock AI Response
-        // In real app, this would be an API call
-        new android.os.Handler().postDelayed(() -> {
-            ChatMessage aiMsg = new ChatMessage("That looks delicious! Here's a recipe for it...", false);
-            messageList.add(0, aiMsg);
-            chatAdapter.notifyItemInserted(0);
-            rvChatMessages.scrollToPosition(0);
-        }, 1500);
+        // 4. API Call
+        // Create Request (Empty recipe for general chat, step 0)
+        com.example.plateit.requests.ChatRequest req = new com.example.plateit.requests.ChatRequest(
+                text,
+                "general_chat_thread",
+                null, // No specific recipe context
+                0,
+                imageBase64);
+
+        com.example.plateit.api.RetrofitClient.getAgentService().chat(req)
+                .enqueue(new retrofit2.Callback<com.example.plateit.responses.ChatResponse>() {
+                    @Override
+                    public void onResponse(retrofit2.Call<com.example.plateit.responses.ChatResponse> call,
+                            retrofit2.Response<com.example.plateit.responses.ChatResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            com.example.plateit.responses.ChatResponse resp = response.body();
+                            String reply = resp.getChatBubble();
+
+                            String uiType = resp.getUiType();
+
+                            // Add AI Message with rich data
+                            ChatMessage aiMsg = new ChatMessage(
+                                    reply,
+                                    uiType != null ? uiType : "none",
+                                    resp.getRecipeData(),
+                                    resp.getIngredientData(),
+                                    resp.getVideoData());
+
+                            messageList.add(0, aiMsg);
+                            chatAdapter.notifyItemInserted(0);
+                            rvChatMessages.scrollToPosition(0);
+
+                        } else {
+                            ChatMessage errorMsg = new ChatMessage(
+                                    "Sorry, I'm having trouble connecting to the kitchen.", false);
+                            messageList.add(0, errorMsg);
+                            chatAdapter.notifyItemInserted(0);
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(retrofit2.Call<com.example.plateit.responses.ChatResponse> call,
+                            Throwable t) {
+                        ChatMessage errorMsg = new ChatMessage("Network error: " + t.getMessage(), false);
+                        messageList.add(0, errorMsg);
+                        chatAdapter.notifyItemInserted(0);
+                    }
+                });
     }
 }

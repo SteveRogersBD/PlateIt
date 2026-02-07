@@ -26,4 +26,11 @@ public class RetrofitClient {
         return recipefit.create(RecipeApiService.class);
     }
 
+    public static AgentApiService getAgentService() {
+        if (recipefit == null) {
+            getService(); // Initialize retrofit
+        }
+        return recipefit.create(AgentApiService.class);
+    }
+
 }

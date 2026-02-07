@@ -22,7 +22,7 @@ load_dotenv()
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     # Context injected from the App
-    recipe: Recipe
+    recipe: Recipe | None
     current_step: int
     image_data: str | None # Base64 encoded image
     

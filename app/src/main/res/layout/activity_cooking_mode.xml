@@ -73,14 +73,51 @@
         tools:visibility="visible"
         app:layout_constraintBottom_toTopOf="@id/assistantBar">
         
-        <TextView
-            android:id="@+id/tvAssistantText"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="16dp"
-            android:text="The cheese should be golden brown and bubbling."
-            android:textColor="@color/gray_800"
-            android:textSize="16sp"/>
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/tvAssistantText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="The cheese should be golden brown and bubbling."
+                android:textColor="@color/gray_800"
+                android:textSize="16sp"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- Dynamic Content Lists -->
+            
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvRecipeList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible"
+                tools:listitem="@layout/item_blog_card"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvIngredientList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible" 
+                tools:listitem="@layout/item_ingredient"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvVideoList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible"
+                tools:listitem="@layout/item_video_card"/>
+                
+        </LinearLayout>
     </androidx.cardview.widget.CardView>
 
     <!-- Assistant Bar -->

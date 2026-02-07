@@ -52,19 +52,20 @@ public class CookingModeActivity extends AppCompatActivity {
     private TextToSpeech textToSpeech;
     private boolean isListening = false;
 
+    // Dynamic UI
+    private androidx.recyclerview.widget.RecyclerView rvRecipeList, rvIngredientList, rvVideoList;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cooking_mode);
 
         // Get Steps & Recipe from Intent
-        // Ideally pass the whole Recipe Serializable object
         currentRecipe = (com.example.plateit.models.Recipe) getIntent().getSerializableExtra("recipe_object");
 
         if (currentRecipe != null) {
             steps = currentRecipe.getSteps();
         } else {
-            // Fallback for legacy calls (development only)
             steps = getIntent().getStringArrayListExtra("steps_list");
         }
 
@@ -84,6 +85,19 @@ public class CookingModeActivity extends AppCompatActivity {
         btnKeyboard = findViewById(R.id.btnKeyboard);
         cvAssistantResponse = findViewById(R.id.cvAssistantResponse);
         tvAssistantText = findViewById(R.id.tvAssistantText);
+
+        // Dynamic Lists
+        rvRecipeList = findViewById(R.id.rvRecipeList);
+        rvIngredientList = findViewById(R.id.rvIngredientList);
+        rvVideoList = findViewById(R.id.rvVideoList);
+
+        // Setup LayoutManagers
+        rvRecipeList.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this,
+                androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+        // Use Grid for Ingredients to save space if needed, or vertical linear
+        rvIngredientList.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(this, 2));
+        rvVideoList.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this,
+                androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
 
         // Setup ViewPager
         CookingStepsAdapter adapter = new CookingStepsAdapter(steps);
@@ -144,6 +158,7 @@ public class CookingModeActivity extends AppCompatActivity {
     private void showKeyboardInput() {
         com.google.android.material.bottomsheet.BottomSheetDialog sheet = new com.google.android.material.bottomsheet.BottomSheetDialog(
                 this);
+
         View view = getLayoutInflater().inflate(R.layout.bottom_sheet_chat_input, null);
         sheet.setContentView(view);
 
@@ -184,14 +199,12 @@ public class CookingModeActivity extends AppCompatActivity {
             return;
         }
 
-        // Show loading state
         Toast.makeText(this, "Thinking...", Toast.LENGTH_SHORT).show();
 
         int currentStepIndex = viewPager.getCurrentItem();
         String imageBase64 = null;
 
         if (image != null) {
-            // Convert to Base64
             java.io.ByteArrayOutputStream byteArrayOutputStream = new java.io.ByteArrayOutputStream();
             image.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
             byte[] byteArray = byteArrayOutputStream.toByteArray();
@@ -205,7 +218,8 @@ public class CookingModeActivity extends AppCompatActivity {
                 currentStepIndex,
                 imageBase64);
 
-        com.example.plateit.api.RetrofitClient.getService().chat(req)
+        // Use AgentApiService
+        com.example.plateit.api.RetrofitClient.getAgentService().chat(req)
                 .enqueue(new retrofit2.Callback<com.example.plateit.responses.ChatResponse>() {
                     @Override
                     public void onResponse(retrofit2.Call<com.example.plateit.responses.ChatResponse> call,
@@ -213,12 +227,57 @@ public class CookingModeActivity extends AppCompatActivity {
                         if (response.isSuccessful() && response.body() != null) {
                             com.example.plateit.responses.ChatResponse resp = response.body();
 
-                            // Show text
+                            // 1. Show Text
                             String reply = resp.getChatBubble();
                             cvAssistantResponse.setVisibility(View.VISIBLE);
                             tvAssistantText.setText(reply);
 
-                            // Speak
+                            // 2. Handle Dynamic UI
+                            String type = resp.getUiType();
+                            rvRecipeList.setVisibility(View.GONE);
+                            rvIngredientList.setVisibility(View.GONE);
+                            rvVideoList.setVisibility(View.GONE);
+
+                            if ("recipe_list".equals(type) && resp.getRecipeData() != null) {
+                                com.example.plateit.adapters.RecipeCardAdapter adapter = new com.example.plateit.adapters.RecipeCardAdapter(
+                                        resp.getRecipeData().getItems(),
+                                        recipe -> {
+                                            fetchAndStartRecipe(recipe.getId());
+                                        });
+                                rvRecipeList.setAdapter(adapter);
+                                rvRecipeList.setVisibility(View.VISIBLE);
+
+                            } else if ("ingredient_list".equals(type) && resp.getIngredientData() != null) {
+                                // Convert items
+                                List<com.example.plateit.models.Ingredient> converted = new ArrayList<>();
+                                for (com.example.plateit.responses.ChatResponse.IngredientItem item : resp
+                                        .getIngredientData().getItems()) {
+                                    converted.add(new com.example.plateit.models.Ingredient(
+                                            item.getName(), item.getAmount(), item.getImage()));
+                                }
+                                com.example.plateit.adapters.IngredientsAdapter adapter = new com.example.plateit.adapters.IngredientsAdapter(
+                                        converted);
+                                rvIngredientList.setAdapter(adapter);
+                                rvIngredientList.setVisibility(View.VISIBLE);
+
+                            } else if ("video_list".equals(type) && resp.getVideoData() != null) {
+                                // Convert items
+                                List<RecipeVideo> converted = new ArrayList<>();
+                                for (com.example.plateit.responses.ChatResponse.VideoItem item : resp.getVideoData()
+                                        .getItems()) {
+                                    converted.add(new RecipeVideo(
+                                            item.getTitle(), item.getUrl(), item.getThumbnail(), "", "", ""));
+                                }
+                                VideoAdapter adapter = new VideoAdapter(converted, video -> {
+                                    // Handle video click (e.g. open Intent)
+                                    Intent intent = new Intent(Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(video.getLink()));
+                                    startActivity(intent);
+                                });
+                                rvVideoList.setAdapter(adapter);
+                                rvVideoList.setVisibility(View.VISIBLE);
+                            }
+
                             speak(reply);
                         } else {
                             Toast.makeText(CookingModeActivity.this, "Server rejected request", Toast.LENGTH_SHORT)
@@ -231,6 +290,42 @@ public class CookingModeActivity extends AppCompatActivity {
                             Throwable t) {
                         Toast.makeText(CookingModeActivity.this, "Network Error: " + t.getMessage(), Toast.LENGTH_SHORT)
                                 .show();
+                    }
+                });
+    }
+
+    private void fetchAndStartRecipe(int recipeId) {
+        Toast.makeText(this, "Loading recipe...", Toast.LENGTH_SHORT).show();
+
+        com.example.plateit.api.RetrofitClient.getAgentService().getRecipeDetails(recipeId)
+                .enqueue(new retrofit2.Callback<com.example.plateit.responses.RecipeResponse>() {
+                    @Override
+                    public void onResponse(retrofit2.Call<com.example.plateit.responses.RecipeResponse> call,
+                            retrofit2.Response<com.example.plateit.responses.RecipeResponse> response) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            com.example.plateit.responses.RecipeResponse recipeResp = response.body();
+
+                            // Convert to Recipe model
+                            com.example.plateit.models.Recipe recipe = new com.example.plateit.models.Recipe(
+                                    recipeResp.getName(),
+                                    recipeResp.getSteps(),
+                                    recipeResp.getIngredients());
+
+                            // Restart CookingModeActivity with new recipe
+                            Intent intent = new Intent(CookingModeActivity.this, CookingModeActivity.class);
+                            intent.putExtra("recipe_object", recipe);
+                            finish(); // Close current activity
+                            startActivity(intent);
+                        } else {
+                            Toast.makeText(CookingModeActivity.this, "Failed to load recipe", Toast.LENGTH_SHORT)
+                                    .show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(retrofit2.Call<com.example.plateit.responses.RecipeResponse> call,
+                            Throwable t) {
+                        Toast.makeText(CookingModeActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }

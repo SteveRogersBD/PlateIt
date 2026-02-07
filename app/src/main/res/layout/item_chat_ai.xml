@@ -28,15 +28,48 @@
         app:layout_constraintStart_toEndOf="@id/imgAvatar"
         app:layout_constraintTop_toTopOf="@id/imgAvatar">
 
-        <TextView
-            android:id="@+id/tvMessage"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="12dp"
-            android:text="This is an AI response."
-            android:textColor="@color/tech_black"
-            android:textStyle="bold"
-            android:textSize="16sp" />
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:text="This is an AI response."
+                android:textColor="@color/tech_black"
+                android:textStyle="bold"
+                android:textSize="16sp" />
+
+            <!-- Dynamic Content Lists -->
+            
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvRecipeList"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:padding="8dp"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvIngredientList"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                android:padding="8dp"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvVideoList"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:padding="8dp"/>
+                
+        </LinearLayout>
             
     </androidx.cardview.widget.CardView>
 
