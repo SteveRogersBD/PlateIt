@@ -11,9 +11,9 @@ import java.util.List;
 
 public class StepsAdapter extends RecyclerView.Adapter<StepsAdapter.ViewHolder> {
 
-    private List<String> steps;
+    private List<com.example.plateit.models.RecipeStep> steps;
 
-    public StepsAdapter(List<String> steps) {
+    public StepsAdapter(List<com.example.plateit.models.RecipeStep> steps) {
         this.steps = steps;
     }
 
@@ -26,9 +26,9 @@ public class StepsAdapter extends RecyclerView.Adapter<StepsAdapter.ViewHolder> 
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        String step = steps.get(position);
+        com.example.plateit.models.RecipeStep step = steps.get(position);
         holder.tvNumber.setText(String.valueOf(position + 1));
-        holder.tvDescription.setText(step);
+        holder.tvDescription.setText(step.getInstruction());
     }
 
     @Override

@@ -18,6 +18,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# --- HARDCODED GEMINI KEY ---
+os.environ["GOOGLE_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
+os.environ["GEMINI_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
+# ----------------------------
+
 # --- 1. State Definition ---
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]

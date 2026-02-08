@@ -30,12 +30,13 @@ public class RecipeActivity extends AppCompatActivity {
         findViewById(R.id.btnStartCooking).setOnClickListener(v -> {
             if (recipe != null && recipe.getSteps() != null) {
                 android.content.Intent intent = new android.content.Intent(this, CookingModeActivity.class);
-                intent.putStringArrayListExtra("steps_list", new java.util.ArrayList<>(recipe.getSteps()));
+                // intent.putStringArrayListExtra("steps_list", new
+                // java.util.ArrayList<>(recipe.getSteps())); // Removed - using object passing
 
                 // Convert Response to Model for Intent passing
                 com.example.plateit.models.Recipe recipeModel = new com.example.plateit.models.Recipe(
                         recipe.getName(),
-                        recipe.getSteps(),
+                        recipe.getSteps(), // Now List<RecipeStep>
                         recipe.getIngredients());
                 intent.putExtra("recipe_object", recipeModel);
 

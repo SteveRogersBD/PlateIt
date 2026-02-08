@@ -5,7 +5,7 @@ import java.util.List;
 
 public class RecipeResponse implements Serializable {
     private String name;
-    private List<String> steps;
+    private List<com.example.plateit.models.RecipeStep> steps;
     private List<com.example.plateit.models.Ingredient> ingredients;
     private String total_time;
 
@@ -14,7 +14,7 @@ public class RecipeResponse implements Serializable {
         return name;
     }
 
-    public List<String> getSteps() {
+    public List<com.example.plateit.models.RecipeStep> getSteps() {
         return steps;
     }
 

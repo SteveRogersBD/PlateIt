@@ -38,7 +38,7 @@ public class CookingModeActivity extends AppCompatActivity {
     private ViewPager2 viewPager;
     private ProgressBar progressBar;
     private TextView tvStepProgress;
-    private List<String> steps;
+    private List<com.example.plateit.models.RecipeStep> steps;
     // Data
     private com.example.plateit.models.Recipe currentRecipe;
 
@@ -67,7 +67,14 @@ public class CookingModeActivity extends AppCompatActivity {
         if (currentRecipe != null) {
             steps = currentRecipe.getSteps();
         } else {
-            steps = getIntent().getStringArrayListExtra("steps_list");
+            // Fallback for old intents or legacy usage
+            ArrayList<String> stringSteps = getIntent().getStringArrayListExtra("steps_list");
+            steps = new ArrayList<>();
+            if (stringSteps != null) {
+                for (String s : stringSteps) {
+                    steps.add(new com.example.plateit.models.RecipeStep(s, null, null));
+                }
+            }
         }
 
         if (steps == null)
@@ -104,6 +111,21 @@ public class CookingModeActivity extends AppCompatActivity {
         CookingStepsAdapter adapter = new CookingStepsAdapter(steps);
         viewPager.setAdapter(adapter);
         viewPager.setPageTransformer(new ZoomOutPageTransformer());
+
+        // Show ingredients immediately - COMMENTED OUT to preventing blocking steps
+        /*
+         * if (currentRecipe != null && currentRecipe.getIngredients() != null) {
+         * com.example.plateit.adapters.IngredientsAdapter ingAdapter = new
+         * com.example.plateit.adapters.IngredientsAdapter(
+         * currentRecipe.getIngredients());
+         * rvIngredientList.setAdapter(ingAdapter);
+         * rvIngredientList.setVisibility(View.VISIBLE);
+         * 
+         * // Show the card container so the ingredients are visible
+         * cvAssistantResponse.setVisibility(View.VISIBLE);
+         * tvAssistantText.setText("Here are the ingredients you'll need:");
+         * }
+         */
 
         updateProgress(0);
 

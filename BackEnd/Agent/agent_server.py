@@ -4,6 +4,9 @@ from sqlmodel import Session, select
 from typing import Optional
 import uuid
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from better_agent import workflow as recipe_workflow
 from database import get_session, create_db_and_tables
@@ -12,6 +15,11 @@ from tools import search_youtube_videos
 import random
 
 app = FastAPI()
+
+# --- HARDCODED GEMINI KEY ---
+os.environ["GOOGLE_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
+os.environ["GEMINI_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
+# ----------------------------
 
 # --- Auth Models ---
 class SignupRequest(BaseModel):
@@ -350,7 +358,11 @@ def get_full_recipe_details(recipe_id: int):
         steps = []
         if data.get("analyzedInstructions"):
             for step in data["analyzedInstructions"][0].get("steps", []):
-                steps.append(step.get("step"))
+                steps.append({
+                    "instruction": step.get("step"),
+                    "visual_query": None,
+                    "imageUrl": None
+                })
         else:
             # Fallback to splitting instructions string
             instr = data.get("instructions", "")
@@ -358,7 +370,11 @@ def get_full_recipe_details(recipe_id: int):
                 # Remove HTML tags if any
                 import re
                 clean_instr = re.sub('<[^<]+?>', '', instr)
-                steps = [s.strip() for s in clean_instr.split('.') if s.strip()]
+                steps = [{
+                    "instruction": s.strip(),
+                    "visual_query": None,
+                    "imageUrl": None
+                } for s in clean_instr.split('.') if s.strip()]
                 
         return {
             "name": data.get("title"),

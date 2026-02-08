@@ -57,7 +57,8 @@
         android:layout_marginHorizontal="24dp"
         android:layout_marginBottom="16dp"
         app:layout_constraintTop_toBottomOf="@id/topBar"
-        app:layout_constraintBottom_toTopOf="@id/cvAssistantResponse"/>
+        app:layout_constraintBottom_toTopOf="@id/cvAssistantResponse" />
+
 
     <!-- Assistant Response Card (Hidden by default) -->
     <androidx.cardview.widget.CardView
@@ -106,7 +107,8 @@
                 android:orientation="vertical"
                 android:visibility="gone"
                 tools:visibility="visible" 
-                tools:listitem="@layout/item_ingredient"/>
+                tools:listitem="@layout/item_ingredient"
+                tools:itemCount="4"/>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvVideoList"

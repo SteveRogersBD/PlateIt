@@ -5,10 +5,10 @@ import java.util.List;
 
 public class Recipe implements Serializable {
     private String name;
-    private List<String> steps;
+    private List<RecipeStep> steps;
     private List<Ingredient> ingredients;
 
-    public Recipe(String name, List<String> steps, List<Ingredient> ingredients) {
+    public Recipe(String name, List<RecipeStep> steps, List<Ingredient> ingredients) {
         this.name = name;
         this.steps = steps;
         this.ingredients = ingredients;
@@ -18,7 +18,7 @@ public class Recipe implements Serializable {
         return name;
     }
 
-    public List<String> getSteps() {
+    public List<RecipeStep> getSteps() {
         return steps;
     }
 

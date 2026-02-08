@@ -6,6 +6,11 @@ from urllib.parse import urlparse, parse_qs
 import time
 import google.generativeai as genai
 
+# --- HARDCODED GEMINI KEY ---
+os.environ["GOOGLE_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
+os.environ["GEMINI_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
+# ----------------------------
+
 # --- Google / SerpAPI Tools ---
 
 @tool

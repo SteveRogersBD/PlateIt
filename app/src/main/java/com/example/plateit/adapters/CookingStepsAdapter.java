@@ -9,11 +9,15 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.plateit.R;
 import java.util.List;
 
+import android.widget.ImageView;
+import com.example.plateit.models.RecipeStep;
+import com.squareup.picasso.Picasso;
+
 public class CookingStepsAdapter extends RecyclerView.Adapter<CookingStepsAdapter.ViewHolder> {
 
-    private List<String> steps;
+    private List<RecipeStep> steps;
 
-    public CookingStepsAdapter(List<String> steps) {
+    public CookingStepsAdapter(List<RecipeStep> steps) {
         this.steps = steps;
     }
 
@@ -26,9 +30,22 @@ public class CookingStepsAdapter extends RecyclerView.Adapter<CookingStepsAdapte
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        String step = steps.get(position);
+        RecipeStep step = steps.get(position);
         holder.tvNumber.setText(String.valueOf(position + 1));
-        holder.tvDescription.setText(step);
+
+        // Handle potentially null instruction
+        String text = step.getInstruction() != null ? step.getInstruction() : "";
+        holder.tvDescription.setText(text);
+
+        // Handle Image
+        if (step.getImageUrl() != null && !step.getImageUrl().isEmpty()) {
+            holder.ivImage.setVisibility(View.VISIBLE);
+            Picasso.get().load(step.getImageUrl())
+                    .placeholder(R.drawable.ic_launcher_background) // or any placeholder
+                    .into(holder.ivImage);
+        } else {
+            holder.ivImage.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -39,11 +56,13 @@ public class CookingStepsAdapter extends RecyclerView.Adapter<CookingStepsAdapte
     public static class ViewHolder extends RecyclerView.ViewHolder {
         TextView tvNumber;
         TextView tvDescription;
+        ImageView ivImage;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvNumber = itemView.findViewById(R.id.tvStepNumberBig);
             tvDescription = itemView.findViewById(R.id.tvStepDescriptionBig);
+            ivImage = itemView.findViewById(R.id.ivStepImage);
         }
     }
 }
