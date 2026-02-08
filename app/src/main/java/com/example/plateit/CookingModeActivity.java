@@ -61,24 +61,53 @@ public class CookingModeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cooking_mode);
 
-        // Get Steps & Recipe from Intent
-        currentRecipe = (com.example.plateit.models.Recipe) getIntent().getSerializableExtra("recipe_object");
+        // Get Recipe from Intent (JSON Mode)
+        try {
+            String json = getIntent().getStringExtra("recipe_json");
+            if (json != null) {
+                currentRecipe = new com.google.gson.Gson().fromJson(json, com.example.plateit.models.Recipe.class);
+            }
+            // Check for legacy object passing just in case (optional, can remove)
+            if (currentRecipe == null) {
+                currentRecipe = (com.example.plateit.models.Recipe) getIntent().getSerializableExtra("recipe_object");
+            }
+
+        } catch (Exception e) {
+            android.util.Log.e("CookingMode", "Error parsing recipe JSON", e);
+            Toast.makeText(this, "Error loading recipe data: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
 
         if (currentRecipe != null) {
             steps = currentRecipe.getSteps();
+            // Toast logging
+            Toast.makeText(this, "Recipe Loaded: " + currentRecipe.getName(), Toast.LENGTH_SHORT).show();
         } else {
             // Fallback for old intents or legacy usage
+            // (Keeping this block but it likely won't be hit if JSON works)
+            android.util.Log.d("CookingMode", "Checking for legacy string list");
             ArrayList<String> stringSteps = getIntent().getStringArrayListExtra("steps_list");
             steps = new ArrayList<>();
             if (stringSteps != null) {
                 for (String s : stringSteps) {
                     steps.add(new com.example.plateit.models.RecipeStep(s, null, null));
                 }
+                android.util.Log.d("CookingMode", "Legacy steps found: " + steps.size());
             }
         }
 
-        if (steps == null)
+        if (steps == null || steps.isEmpty()) {
+            android.util.Log.e("CookingMode", "No steps found!");
+            Toast.makeText(this, "Error: Recipe has no steps!", Toast.LENGTH_LONG).show();
+            // finish();
+            // Create a dummy step to prevent crash if that's what keeps it open
             steps = new ArrayList<>();
+            steps.add(new com.example.plateit.models.RecipeStep("No steps available.", null, null));
+        }
+
+        // Show steps size toast for debugging
+        if (steps != null) {
+            Toast.makeText(this, "Cooking Mode: " + steps.size() + " steps loaded.", Toast.LENGTH_SHORT).show();
+        }
 
         viewPager = findViewById(R.id.viewPagerSteps);
         progressBar = findViewById(R.id.progressBar);
@@ -108,9 +137,14 @@ public class CookingModeActivity extends AppCompatActivity {
                 androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
 
         // Setup ViewPager
-        CookingStepsAdapter adapter = new CookingStepsAdapter(steps);
-        viewPager.setAdapter(adapter);
-        viewPager.setPageTransformer(new ZoomOutPageTransformer());
+        try {
+            CookingStepsAdapter adapter = new CookingStepsAdapter(steps);
+            viewPager.setAdapter(adapter);
+            viewPager.setPageTransformer(new ZoomOutPageTransformer());
+            Toast.makeText(this, "Adapter set successfully", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Adapter Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
 
         // Show ingredients immediately - COMMENTED OUT to preventing blocking steps
         /*

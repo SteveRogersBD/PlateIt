@@ -32,25 +32,32 @@
             android:layout_marginTop="24dp"
             android:fillViewport="true">
 
-            <ImageView
-                android:id="@+id/ivStepImage"
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                android:layout_marginBottom="16dp"
-                android:scaleType="centerCrop"
-                android:src="@drawable/ic_launcher_background"
-                app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.MediumComponent"
-                android:visibility="gone"/>
-
-            <TextView
-                android:id="@+id/tvStepDescriptionBig"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Chop the onions finely and sauté until golden brown. Make sure not to burn them."
-                android:textSize="24sp"
-                android:textAlignment="center"
-                android:textColor="@color/black"
-                android:lineSpacingExtra="8dp"/>
+                android:orientation="vertical"
+                android:gravity="center_horizontal">
+
+                <ImageView
+                    android:id="@+id/ivStepImage"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:layout_marginBottom="16dp"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_launcher_background"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.MaterialComponents.MediumComponent"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:id="@+id/tvStepDescriptionBig"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Chop the onions finely and sauté until golden brown. Make sure not to burn them."
+                    android:textSize="24sp"
+                    android:textAlignment="center"
+                    android:textColor="@color/black"
+                    android:lineSpacingExtra="8dp"/>
+            </LinearLayout>
         </ScrollView>
 
     </LinearLayout>

@@ -442,7 +442,9 @@ public class HomeFragment extends Fragment {
         btnStartCooking.setOnClickListener(v -> {
             bottomSheetDialog.dismiss();
             android.content.Intent intent = new android.content.Intent(getContext(), RecipeActivity.class);
-            intent.putExtra("recipe_data", recipe);
+            // Pass JSON to avoid Serializable issues
+            String json = new com.google.gson.Gson().toJson(recipe);
+            intent.putExtra("recipe_json", json);
             startActivity(intent);
         });
 
