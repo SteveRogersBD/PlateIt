@@ -21,37 +21,88 @@
             android:padding="24dp"
             android:background="@color/soft_cream">
 
-            <TextView
-                android:id="@+id/tvRecipeTitle"
+            <!-- Title Card -->
+            <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Spicy Garlic Ramen"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:textColor="@color/black"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="8dp"
-                android:gravity="center_vertical">
-                
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_recent_history"
-                    app:tint="@color/gray_800"/>
-                
-                <TextView
-                    android:id="@+id/tvRecipeTime"
-                    android:layout_width="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardCornerRadius="12dp"
+                app:cardBackgroundColor="@color/app_primary"
+                app:cardElevation="2dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="25 mins"
-                    android:textSize="16sp"
-                    android:textColor="@color/gray_800"/>
-            </LinearLayout>
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView
+                        android:id="@+id/tvRecipeTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Spicy Garlic Ramen"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:gravity="center"
+                        android:textColor="@color/black"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center">
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:src="@android:drawable/ic_menu_recent_history"
+                            app:tint="@color/gray_800"/>
+                        <TextView
+                            android:id="@+id/tvRecipeTime"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="4dp"
+                            android:text="25 mins"
+                            android:textSize="14sp"
+                            android:textColor="@color/gray_800"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- Large Source Card -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cvSourceCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="@color/black"
+                android:visibility="gone"
+                tools:visibility="visible">
+                
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="300dp">
+                    
+                    <ImageView
+                        android:id="@+id/imgSourceThumbnail"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:alpha="0.8"/>
+                    
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnWatchSource"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:text="Watch"
+                        android:textColor="@color/white"
+                        android:textStyle="bold"
+                        app:icon="@drawable/ic_link"
+                        app:iconTint="@color/white"
+                        app:backgroundTint="#99000000"
+                        app:cornerRadius="20dp"/>
+                </RelativeLayout>
+            </androidx.cardview.widget.CardView>
         </LinearLayout>
 
         <!-- Ingredients Section -->

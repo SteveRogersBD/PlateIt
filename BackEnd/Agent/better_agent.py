@@ -47,7 +47,10 @@ class RecipeStep(BaseModel):
 class Recipe(BaseModel):
     name: str = Field(description="Name of the recipe")
     steps: list[RecipeStep] = Field(description="List of cooking steps")
+    steps: list[RecipeStep] = Field(description="List of cooking steps")
     ingredients: list[Ingredient] = Field(description="List of ingredients")
+    source: str | None = Field(default=None, description="URL of the original recipe source (e.g. YouTube video, Blog URL)")
+    source_image: str | None = Field(default=None, description="URL of the source image/thumbnail")
 
 # --- State Definition ---
 
@@ -58,7 +61,9 @@ class AgentState(TypedDict):
     transcript: str
     text_content: str
     video_file_path: str
+    video_file_path: str
     image_file_path: str 
+    video_thumbnail: str # New field for YouTube thumbnail
     
     # Internal state for passing data between nodes
     ingredients_detected: list[str] 
@@ -149,6 +154,7 @@ def node_scrape_website(state: AgentState):
     
     # Create the Recipe object
     base_img_url = "https://img.spoonacular.com/ingredients_100x100/"
+    source_image = response.get('image', None)
     
     ingredients = []
     for item in response.get('extendedIngredients', []):
@@ -171,7 +177,7 @@ def node_scrape_website(state: AgentState):
             steps.append(RecipeStep(instruction=step.get('step', '')))
             
     # Create the Recipe object
-    recipe = Recipe(name=name, steps=steps, ingredients=ingredients)
+    recipe = Recipe(name=name, steps=steps, ingredients=ingredients, source=url, source_image=source_image)
     
     # Return the key 'recipe' to update the state
     return {"recipe": recipe} 
@@ -188,8 +194,12 @@ def node_get_youtube_data(state: AgentState):
     description = get_youtube_description.invoke(video_id)
     
     if "No transcript detected" in transcript: transcript = ""
+
+    # Get thumbnail (hacky/fast way for YouTube: maxresdefault)
+    # Standard format: https://img.youtube.com/vi/<insert-youtube-video-id-here>/maxresdefault.jpg
+    thumbnail = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
     
-    return {"video_id": video_id, "transcript": transcript, "description": description}
+    return {"video_id": video_id, "transcript": transcript, "description": description, "video_thumbnail": thumbnail}
 
 
 # --- Extraction Logic Nodes ---
@@ -409,6 +419,17 @@ def node_format_recipe(state: AgentState):
             SystemMessage(content="Extract the recipe data into the specific JSON format required."),
             HumanMessage(content=raw_text)
         ])
+        
+        # Inject source URL if we know it from the state (e.g. YouTube URL)
+        source_url = state.get("url")
+        if source_url and not response.source:
+             response.source = source_url
+
+        # Inject source image if we know it (e.g. YouTube thumbnail)
+        source_image = state.get("video_thumbnail")
+        if source_image and not response.source_image:
+            response.source_image = source_image
+             
         return {"recipe": response}
     except Exception as e:
         print(f"Formatting error: {e}")

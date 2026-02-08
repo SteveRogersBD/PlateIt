@@ -209,7 +209,9 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                                 com.example.plateit.models.Recipe recipe = new com.example.plateit.models.Recipe(
                                         recipeResp.getName(),
                                         recipeResp.getSteps(),
-                                        recipeResp.getIngredients());
+                                        recipeResp.getIngredients(),
+                                        recipeResp.getSourceUrl(),
+                                        recipeResp.getSourceImage());
 
                                 // Start CookingModeActivity
                                 android.content.Intent intent = new android.content.Intent(context,

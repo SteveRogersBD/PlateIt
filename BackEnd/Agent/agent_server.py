@@ -10,7 +10,7 @@ load_dotenv()
 
 from better_agent import workflow as recipe_workflow
 from database import get_session, create_db_and_tables
-from models import User
+from models import User, PantryItem
 from tools import search_youtube_videos
 import random
 
@@ -41,6 +41,12 @@ class AuthResponse(BaseModel):
     email: str
     username: str
     message: str
+
+class PantryItemCreate(BaseModel):
+    user_id: uuid.UUID
+    name: str
+    amount: Optional[str] = None
+    image_url: Optional[str] = None
 
 # --- Auth Endpoints ---
 @app.post("/signup", response_model=AuthResponse)
@@ -218,6 +224,34 @@ def get_blog_recommendations(user_id: uuid.UUID, session: Session = Depends(get_
     
     return {"blogs": all_blogs}
 
+# --- Pantry Endpoints ---
+@app.get("/pantry/{user_id}")
+def get_pantry_items(user_id: uuid.UUID, session: Session = Depends(get_session)):
+    items = session.exec(select(PantryItem).where(PantryItem.user_id == user_id).order_by(PantryItem.created_at.desc())).all()
+    return items
+
+@app.post("/pantry/add")
+def add_pantry_item(item: PantryItemCreate, session: Session = Depends(get_session)):
+    new_item = PantryItem(
+        user_id=item.user_id,
+        name=item.name,
+        amount=item.amount,
+        image_url=item.image_url
+    )
+    session.add(new_item)
+    session.commit()
+    session.refresh(new_item)
+    return new_item
+
+@app.delete("/pantry/{item_id}")
+def delete_pantry_item(item_id: int, session: Session = Depends(get_session)):
+    item = session.get(PantryItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    session.delete(item)
+    session.commit()
+    return {"message": "Item deleted"}
+
 # --- Existing Recipe Extraction ---
 class VideoRequest(BaseModel):
     video_url: str
@@ -386,6 +420,125 @@ def get_full_recipe_details(recipe_id: int):
     except Exception as e:
          print(f"Error fetching recipe {recipe_id}: {e}")
          raise HTTPException(status_code=500, detail=str(e))
+
+# --- Pantry Extraction Endpoint ---
+class PantryScanRequest(BaseModel):
+    image_data: str # Base64 encoded image
+
+@app.post("/scan_pantry")
+async def scan_pantry(request: PantryScanRequest):
+    """
+    Analyzes an image and returns a list of pantry items.
+    """
+    from langchain_google_genai import ChatGoogleGenerativeAI
+    from langchain_core.messages import HumanMessage
+    import base64
+    import json
+
+    print("--- Pantry Scan Request ---")
+    
+    try:
+        # 1. Initialize Gemini
+        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp") 
+        # Or "gemini-1.5-flash" depending on availability, but 2.0 is great for vision
+        
+        # 2. Construct Message
+        prompt = """
+        Analyze this image and identify all food items visible.
+        Return ONLY a JSON array of objects with 'name' and 'amount' fields.
+        Example:
+        [
+            {"name": "Milk", "amount": "1 Gallon"},
+            {"name": "Eggs", "amount": "12 count"},
+            {"name": "Apple", "amount": "3"}
+        ]
+        If implicit, estimate the amount. If unsure, use "1".
+        Do not include Markdown formatting or code blocks. Just the raw JSON.
+        """
+        
+        message = HumanMessage(
+            content=[
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{request.image_data}"}}
+            ]
+        )
+        
+        # 3. Invoke
+        response = llm.invoke([message])
+        content = response.content.replace("```json", "").replace("```", "").strip()
+        
+        # 4. Parse
+        items = json.loads(content)
+        
+        # 5. Enrich with images in parallel
+        # (For simplicity here, sequential is fine for a few items, or simple loop)
+        for item in items:
+            item["image_url"] = _get_image_for_item(item.get("name", ""))
+            
+        return {"items": items}
+
+    except Exception as e:
+        print(f"Pantry Scan Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+def _get_image_for_item(item_name: str) -> str:
+    """
+    Tries to find an image URL for the given item name.
+    1. Spoonacular
+    2. Google Images
+    """
+    import requests
+    import os
+    
+    if not item_name: return ""
+
+    # 1. Spoonacular First (High precision for ingredients)
+    spoon_key = os.getenv("SPOONACULAR_API_KEY")
+    if spoon_key:
+        try:
+            url = f"https://api.spoonacular.com/food/ingredients/search"
+            params = {
+                "query": item_name,
+                "apiKey": spoon_key,
+                "number": 1
+            }
+            resp = requests.get(url, params=params)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get("results"):
+                    image_file = data["results"][0]["image"]
+                    return f"https://img.spoonacular.com/ingredients_250x250/{image_file}"
+        except Exception as e:
+            print(f"Spoonacular image fetch error: {e}")
+
+    # 2. SerpApi Google Images (Fallback)
+    serp_key = os.getenv("SERP_API_KEY")
+    if serp_key:
+        try:
+            url = "https://serpapi.com/search"
+            params = {
+                "engine": "google_images",
+                "q": item_name + " food ingredient",
+                "api_key": serp_key,
+                "num": 1,
+                "safe": "active"
+            }
+            resp = requests.get(url, params=params)
+            if resp.status_code == 200:
+                data = resp.json()
+                if "images_results" in data and len(data["images_results"]) > 0:
+                     return data["images_results"][0].get("thumbnail") 
+        except Exception as e:
+            print(f"SerpApi image fetch error: {e}")
+            
+    return ""
+
+@app.get("/get_ingredient_image")
+def get_ingredient_image_endpoint(query: str):
+    url = _get_image_for_item(query)
+    return {"image_url": url}
 
 if __name__ == "__main__":
     import uvicorn

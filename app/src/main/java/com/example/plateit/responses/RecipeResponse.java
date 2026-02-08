@@ -8,6 +8,8 @@ public class RecipeResponse implements Serializable {
     private List<com.example.plateit.models.RecipeStep> steps;
     private List<com.example.plateit.models.Ingredient> ingredients;
     private String total_time;
+    private String source;
+    private String source_image;
 
     // Getters
     public String getName() {
@@ -24,5 +26,13 @@ public class RecipeResponse implements Serializable {
 
     public String getTotalTime() {
         return total_time;
+    }
+
+    public String getSourceUrl() {
+        return source;
+    }
+
+    public String getSourceImage() {
+        return source_image;
     }
 }

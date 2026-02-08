@@ -19,9 +19,12 @@ class User(SQLModel, table=True):
 
 # 2. PantryItems
 class PantryItem(SQLModel, table=True):
+    __tablename__ = "pantry_items_v2"
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: uuid.UUID = Field(foreign_key="user.id", index=True)
-    item_text: List[str] = Field(default=[], sa_column=Column(JSON))
+    name: str
+    amount: Optional[str] = None
+    image_url: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

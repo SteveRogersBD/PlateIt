@@ -19,6 +19,9 @@ public class RecipeActivity extends AppCompatActivity {
 
         android.widget.TextView tvTitle = findViewById(R.id.tvRecipeTitle);
         android.widget.TextView tvTime = findViewById(R.id.tvRecipeTime);
+        androidx.cardview.widget.CardView cvSourceCard = findViewById(R.id.cvSourceCard);
+        android.widget.ImageView imgSourceThumbnail = findViewById(R.id.imgSourceThumbnail);
+        android.view.View btnWatchSource = findViewById(R.id.btnWatchSource);
         androidx.recyclerview.widget.RecyclerView rvIngredients = findViewById(R.id.rvIngredients);
         androidx.recyclerview.widget.RecyclerView rvSteps = findViewById(R.id.rvSteps);
 
@@ -45,7 +48,9 @@ public class RecipeActivity extends AppCompatActivity {
                 com.example.plateit.models.Recipe recipeModel = new com.example.plateit.models.Recipe(
                         finalRecipe.getName(),
                         finalRecipe.getSteps(), // Now List<RecipeStep>
-                        finalRecipe.getIngredients());
+                        finalRecipe.getIngredients(),
+                        finalRecipe.getSourceUrl(),
+                        finalRecipe.getSourceImage());
 
                 // Pass as JSON
                 String jsonModel = new com.google.gson.Gson().toJson(recipeModel);
@@ -70,7 +75,42 @@ public class RecipeActivity extends AppCompatActivity {
             if (getSupportActionBar() != null)
                 getSupportActionBar().hide();
             tvTitle.setText(recipe.getName());
+
             tvTime.setText(recipe.getTotalTime() != null ? recipe.getTotalTime() : "N/A");
+
+            // Populate Source Card
+            String sourceUrl = recipe.getSourceUrl();
+            String sourceImage = recipe.getSourceImage();
+
+            if (sourceUrl != null && !sourceUrl.isEmpty() && sourceUrl.startsWith("http")) {
+                cvSourceCard.setVisibility(android.view.View.VISIBLE);
+
+                if (sourceImage != null && !sourceImage.isEmpty()) {
+                    com.squareup.picasso.Picasso.get()
+                            .load(sourceImage)
+                            .placeholder(R.drawable.ic_launcher_background)
+                            .error(R.drawable.ic_launcher_background)
+                            .centerCrop()
+                            .fit()
+                            .into(imgSourceThumbnail);
+                } else {
+                    imgSourceThumbnail.setImageResource(R.drawable.ic_launcher_background);
+                }
+
+                // Click listener
+                android.view.View.OnClickListener openUrl = v -> {
+                    android.content.Intent browserIntent = new android.content.Intent(
+                            android.content.Intent.ACTION_VIEW, android.net.Uri.parse(sourceUrl));
+                    startActivity(browserIntent);
+                };
+
+                cvSourceCard.setOnClickListener(openUrl);
+                if (btnWatchSource != null) {
+                    btnWatchSource.setOnClickListener(openUrl);
+                }
+            } else {
+                cvSourceCard.setVisibility(android.view.View.GONE);
+            }
 
             // Ingredients (Horizontal)
             rvIngredients.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this,

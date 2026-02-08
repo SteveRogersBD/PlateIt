@@ -40,6 +40,9 @@ public class CookingModeActivity extends AppCompatActivity {
     private ProgressBar apiLoadingIndicator;
     private TextView tvStepProgress;
     private TextView tvRecipeName;
+    private CardView cvSourceCard;
+    private ImageView imgSourceThumbnail;
+    private TextView tvSourceText;
     private List<com.example.plateit.models.RecipeStep> steps;
     // Data
     private com.example.plateit.models.Recipe currentRecipe;
@@ -80,9 +83,6 @@ public class CookingModeActivity extends AppCompatActivity {
         }
 
         if (currentRecipe != null) {
-            if (tvRecipeName != null) {
-                tvRecipeName.setText(currentRecipe.getName());
-            }
             steps = currentRecipe.getSteps();
         } else {
             // Fallback for old intents or legacy usage
@@ -112,6 +112,13 @@ public class CookingModeActivity extends AppCompatActivity {
         apiLoadingIndicator = findViewById(R.id.apiLoadingIndicator);
         tvStepProgress = findViewById(R.id.tvStepProgress);
         tvRecipeName = findViewById(R.id.tvRecipeName);
+        if (currentRecipe != null) {
+            tvRecipeName.setText(currentRecipe.getName());
+        }
+
+        cvSourceCard = findViewById(R.id.cvSourceCard);
+        imgSourceThumbnail = findViewById(R.id.imgSourceThumbnail);
+        tvSourceText = findViewById(R.id.tvSourceText);
         View btnPrevious = findViewById(R.id.btnPrevious);
         View btnNext = findViewById(R.id.btnNext);
         View btnClose = findViewById(R.id.btnClose);
@@ -154,11 +161,47 @@ public class CookingModeActivity extends AppCompatActivity {
          * rvIngredientList.setAdapter(ingAdapter);
          * rvIngredientList.setVisibility(View.VISIBLE);
          * 
-         * // Show the card container so the ingredients are visible
-         * cvAssistantResponse.setVisibility(View.VISIBLE);
-         * tvAssistantText.setText("Here are the ingredients you'll need:");
          * }
          */
+
+        if (currentRecipe != null && cvSourceCard != null) {
+            String sourceUrl = currentRecipe.getSource();
+            String sourceImage = currentRecipe.getSourceImage();
+
+            // Check if source is valid and http based (not local file path)
+            if (sourceUrl != null && !sourceUrl.isEmpty() && sourceUrl.startsWith("http")) {
+                cvSourceCard.setVisibility(View.VISIBLE);
+
+                // Set Image
+                if (sourceImage != null && !sourceImage.isEmpty()) {
+                    com.squareup.picasso.Picasso.get()
+                            .load(sourceImage)
+                            .placeholder(R.drawable.ic_launcher_background)
+                            .error(R.drawable.ic_launcher_background)
+                            .centerCrop()
+                            .fit()
+                            .into(imgSourceThumbnail);
+                } else {
+                    // Placeholder if no image
+                    imgSourceThumbnail.setImageResource(R.drawable.ic_launcher_background);
+                }
+
+                // Set Text based on Source Type
+                if (sourceUrl.contains("youtube") || sourceUrl.contains("youtu.be")) {
+                    tvSourceText.setText("Watch Video on YouTube");
+                } else {
+                    tvSourceText.setText("View Original Recipe");
+                }
+
+                cvSourceCard.setOnClickListener(v -> {
+                    Intent browserIntent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(sourceUrl));
+                    startActivity(browserIntent);
+                });
+
+            } else {
+                cvSourceCard.setVisibility(View.GONE);
+            }
+        }
 
         updateProgress(0);
 
@@ -412,7 +455,9 @@ public class CookingModeActivity extends AppCompatActivity {
                             com.example.plateit.models.Recipe recipe = new com.example.plateit.models.Recipe(
                                     recipeResp.getName(),
                                     recipeResp.getSteps(),
-                                    recipeResp.getIngredients());
+                                    recipeResp.getIngredients(),
+                                    recipeResp.getSourceUrl(),
+                                    recipeResp.getSourceImage());
 
                             // Restart CookingModeActivity with new recipe
                             Intent intent = new Intent(CookingModeActivity.this, CookingModeActivity.class);
