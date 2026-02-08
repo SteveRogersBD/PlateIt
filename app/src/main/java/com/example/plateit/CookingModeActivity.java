@@ -37,7 +37,9 @@ public class CookingModeActivity extends AppCompatActivity {
 
     private ViewPager2 viewPager;
     private ProgressBar progressBar;
+    private ProgressBar apiLoadingIndicator;
     private TextView tvStepProgress;
+    private TextView tvRecipeName;
     private List<com.example.plateit.models.RecipeStep> steps;
     // Data
     private com.example.plateit.models.Recipe currentRecipe;
@@ -78,9 +80,10 @@ public class CookingModeActivity extends AppCompatActivity {
         }
 
         if (currentRecipe != null) {
+            if (tvRecipeName != null) {
+                tvRecipeName.setText(currentRecipe.getName());
+            }
             steps = currentRecipe.getSteps();
-            // Toast logging
-            Toast.makeText(this, "Recipe Loaded: " + currentRecipe.getName(), Toast.LENGTH_SHORT).show();
         } else {
             // Fallback for old intents or legacy usage
             // (Keeping this block but it likely won't be hit if JSON works)
@@ -104,14 +107,11 @@ public class CookingModeActivity extends AppCompatActivity {
             steps.add(new com.example.plateit.models.RecipeStep("No steps available.", null, null));
         }
 
-        // Show steps size toast for debugging
-        if (steps != null) {
-            Toast.makeText(this, "Cooking Mode: " + steps.size() + " steps loaded.", Toast.LENGTH_SHORT).show();
-        }
-
         viewPager = findViewById(R.id.viewPagerSteps);
         progressBar = findViewById(R.id.progressBar);
+        apiLoadingIndicator = findViewById(R.id.apiLoadingIndicator);
         tvStepProgress = findViewById(R.id.tvStepProgress);
+        tvRecipeName = findViewById(R.id.tvRecipeName);
         View btnPrevious = findViewById(R.id.btnPrevious);
         View btnNext = findViewById(R.id.btnNext);
         View btnClose = findViewById(R.id.btnClose);
@@ -141,7 +141,6 @@ public class CookingModeActivity extends AppCompatActivity {
             CookingStepsAdapter adapter = new CookingStepsAdapter(steps);
             viewPager.setAdapter(adapter);
             viewPager.setPageTransformer(new ZoomOutPageTransformer());
-            Toast.makeText(this, "Adapter set successfully", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             Toast.makeText(this, "Adapter Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
@@ -256,7 +255,8 @@ public class CookingModeActivity extends AppCompatActivity {
             return;
         }
 
-        Toast.makeText(this, "Thinking...", Toast.LENGTH_SHORT).show();
+        setApiLoading(true);
+        // Toast.makeText(this, "Thinking...", Toast.LENGTH_SHORT).show();
 
         int currentStepIndex = viewPager.getCurrentItem();
         String imageBase64 = null;
@@ -281,6 +281,7 @@ public class CookingModeActivity extends AppCompatActivity {
                     @Override
                     public void onResponse(retrofit2.Call<com.example.plateit.responses.ChatResponse> call,
                             retrofit2.Response<com.example.plateit.responses.ChatResponse> response) {
+                        setApiLoading(false);
                         if (response.isSuccessful() && response.body() != null) {
                             com.example.plateit.responses.ChatResponse resp = response.body();
 
@@ -342,9 +343,9 @@ public class CookingModeActivity extends AppCompatActivity {
                         }
                     }
 
-                    @Override
                     public void onFailure(retrofit2.Call<com.example.plateit.responses.ChatResponse> call,
                             Throwable t) {
+                        setApiLoading(false);
                         Toast.makeText(CookingModeActivity.this, "Network Error: " + t.getMessage(), Toast.LENGTH_SHORT)
                                 .show();
                     }
@@ -396,13 +397,14 @@ public class CookingModeActivity extends AppCompatActivity {
     }
 
     private void fetchAndStartRecipe(int recipeId) {
-        Toast.makeText(this, "Loading recipe...", Toast.LENGTH_SHORT).show();
+        // Toast.makeText(this, "Loading recipe...", Toast.LENGTH_SHORT).show();
+        setApiLoading(true);
 
         com.example.plateit.api.RetrofitClient.getAgentService().getRecipeDetails(recipeId)
                 .enqueue(new retrofit2.Callback<com.example.plateit.responses.RecipeResponse>() {
-                    @Override
                     public void onResponse(retrofit2.Call<com.example.plateit.responses.RecipeResponse> call,
                             retrofit2.Response<com.example.plateit.responses.RecipeResponse> response) {
+                        setApiLoading(false);
                         if (response.isSuccessful() && response.body() != null) {
                             com.example.plateit.responses.RecipeResponse recipeResp = response.body();
 
@@ -423,9 +425,9 @@ public class CookingModeActivity extends AppCompatActivity {
                         }
                     }
 
-                    @Override
                     public void onFailure(retrofit2.Call<com.example.plateit.responses.RecipeResponse> call,
                             Throwable t) {
+                        setApiLoading(false);
                         Toast.makeText(CookingModeActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
@@ -551,6 +553,12 @@ public class CookingModeActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+
+    private void setApiLoading(boolean isLoading) {
+        if (apiLoadingIndicator != null) {
+            apiLoadingIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
         }
     }
 

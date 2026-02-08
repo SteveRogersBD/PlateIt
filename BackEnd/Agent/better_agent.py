@@ -66,6 +66,8 @@ class AgentState(TypedDict):
     raw_recipe_text: str # Intermediate text before formatting
     
     recipe: Recipe
+    enriched_ingredients: list[Ingredient]
+    enriched_steps: list[RecipeStep]
 
 # Initialize LLM
 llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
@@ -447,7 +449,7 @@ def enrich_ingredients(state: AgentState):
              # Keep existing
              updated.append(ing)
         
-    return {"recipe": recipe.model_copy(update={"ingredients": updated})}
+    return {"enriched_ingredients": updated}
 
 
 def node_enrich_steps(state: AgentState):
@@ -491,7 +493,30 @@ def node_enrich_steps(state: AgentState):
                 
         updated_steps.append(new_step)
         
-    return {"recipe": recipe.model_copy(update={"steps": updated_steps})}
+    return {"enriched_steps": updated_steps}
+
+def node_pre_enrichment(state: AgentState):
+    """Pass-through node to trigger parallel enrichment."""
+    return {}
+
+def node_merge_enrichment(state: AgentState):
+    """Merges enriched ingredients and steps back into the recipe."""
+    recipe = state.get('recipe')
+    if not recipe: return {}
+    
+    updates = {}
+    
+    enriched_ingredients = state.get('enriched_ingredients')
+    if enriched_ingredients:
+        updates['ingredients'] = enriched_ingredients
+        
+    enriched_steps = state.get('enriched_steps')
+    if enriched_steps:
+        updates['steps'] = enriched_steps
+        
+    if updates:
+        return {"recipe": recipe.model_copy(update=updates)}
+    return {}
 
 
 # --- Graph Construction ---
@@ -515,6 +540,8 @@ graph.add_node("extract_from_text", node_extract_from_text)
 graph.add_node("format_recipe", node_format_recipe)
 graph.add_node("enrich_ingredients", enrich_ingredients)
 graph.add_node("enrich_steps", node_enrich_steps)
+graph.add_node("merge_enrichment", node_merge_enrichment)
+graph.add_node("pre_enrichment", node_pre_enrichment)
 
 # --- Edges ---
 
@@ -543,7 +570,7 @@ graph.add_conditional_edges(START, route_input, {
 graph.add_edge("get_youtube_data", "extract_from_text")
 
 graph.add_conditional_edges("scrape_website", route_scrape_logic, {
-    "formatted": "enrich_ingredients",
+    "formatted": "pre_enrichment",
     "raw_text": "extract_from_text"
 })
 
@@ -563,9 +590,17 @@ graph.add_edge("recipe_from_ingredients", "format_recipe")
 graph.add_edge("recipe_from_dish_image", "format_recipe")
 
 # Final Polish
-graph.add_edge("format_recipe", "enrich_ingredients")
-graph.add_edge("enrich_ingredients", "enrich_steps")
-graph.add_edge("enrich_steps", END)
+# Final Polish (Parallel)
+# Final Polish (Parallel)
+graph.add_edge("format_recipe", "pre_enrichment")
+
+graph.add_edge("pre_enrichment", "enrich_ingredients")
+graph.add_edge("pre_enrichment", "enrich_steps")
+
+graph.add_edge("enrich_ingredients", "merge_enrichment")
+graph.add_edge("enrich_steps", "merge_enrichment")
+
+graph.add_edge("merge_enrichment", END)
 
 workflow = graph.compile()
 

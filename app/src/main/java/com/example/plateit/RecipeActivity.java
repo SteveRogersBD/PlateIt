@@ -62,8 +62,9 @@ public class RecipeActivity extends AppCompatActivity {
         // Check for null recipe and log
         if (recipe != null) {
             // Toast for success debugging
-            android.widget.Toast.makeText(this, "Recipe Loaded: " + recipe.getName(), android.widget.Toast.LENGTH_LONG)
-                    .show();
+            // android.widget.Toast.makeText(this, "Recipe Loaded: " + recipe.getName(),
+            // android.widget.Toast.LENGTH_LONG)
+            // .show();
 
             // Header
             if (getSupportActionBar() != null)
