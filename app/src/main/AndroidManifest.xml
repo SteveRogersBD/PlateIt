@@ -25,16 +25,28 @@
         android:theme="@style/Theme.PlateIt">
         <activity
             android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.PlateIt">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".OnboardingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.PlateIt"/>
+
+        <activity
+            android:name=".PreferencesActivity"
             android:exported="false"
             android:theme="@style/Theme.PlateIt"/>
 
         <activity
             android:name=".MainActivity"
             android:exported="true" >
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+
         </activity>
 
         <activity

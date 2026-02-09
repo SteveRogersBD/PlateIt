@@ -64,8 +64,8 @@ public class SignInActivity extends AppCompatActivity {
 
                                 android.widget.Toast.makeText(SignInActivity.this, "Sign In Successful",
                                         android.widget.Toast.LENGTH_SHORT).show();
-                                // Proceed to Main Activity
-                                Intent intent = new Intent(SignInActivity.this, MainActivity.class);
+                                // Proceed to Preferences Activity
+                                Intent intent = new Intent(SignInActivity.this, PreferencesActivity.class);
                                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                 startActivity(intent);
                             } else {

@@ -63,8 +63,8 @@ public class SignUpActivity extends AppCompatActivity {
 
                                 android.widget.Toast.makeText(SignUpActivity.this, "Sign Up Successful",
                                         android.widget.Toast.LENGTH_SHORT).show();
-                                // Proceed to Main Activity
-                                Intent intent = new Intent(SignUpActivity.this, MainActivity.class);
+                                // Proceed to Preferences Activity
+                                Intent intent = new Intent(SignUpActivity.this, PreferencesActivity.class);
                                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                                 startActivity(intent);
                             } else {

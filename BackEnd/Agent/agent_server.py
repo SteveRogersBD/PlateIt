@@ -93,19 +93,36 @@ def signin(request: SigninRequest, session: Session = Depends(get_session)):
         message="Login successful"
     )
 
-@app.post("/preferences/update")
+@app.post("/users/preferences")
 def update_preferences(request: UpdatePreferencesRequest, session: Session = Depends(get_session)):
-    user = session.get(User, request.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    print(f"--- Update Preferences Request ---")
+    print(f"User ID: {request.user_id}")
+    print(f"Preferences: {request.preferences}")
     
-    user.preferences = request.preferences
-    session.add(user)
-    session.commit()
-    
-    return {"message": "Preferences updated", "preferences": user.preferences}
+    try:
+        user = session.get(User, request.user_id)
+        if not user:
+            print(f"User not found: {request.user_id}")
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        print(f"Found user: {user.email}")
+        user.preferences = request.preferences
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        
+        print(f"Preferences updated successfully: {user.preferences}")
+        return {"message": "Preferences updated", "preferences": user.preferences}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating preferences: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/preferences/{user_id}")
+
+@app.get("/users/preferences/{user_id}")
 def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session)):
     user = session.get(User, user_id)
     if not user:
@@ -113,25 +130,6 @@ def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session))
         
     return {"preferences": user.preferences}
 
-@app.post("/preferences/update")
-def update_preferences(request: UpdatePreferencesRequest, session: Session = Depends(get_session)):
-    user = session.get(User, request.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    user.preferences = request.preferences
-    session.add(user)
-    session.commit()
-    
-    return {"message": "Preferences updated", "preferences": user.preferences}
-
-@app.get("/preferences/{user_id}")
-def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    return {"preferences": user.preferences}
 
 # --- Video Recommendation Endpoint ---
 @app.get("/recommendations/videos/{user_id}")
@@ -496,6 +494,7 @@ def find_recipes_by_ingredients(request: IngredientSearchRequest):
     if not request.ingredients:
         return []
 
+    print(f"--- Recipe Search Request: {request.ingredients} ---")
     url = "https://api.spoonacular.com/recipes/findByIngredients"
     params = {
         "ingredients": ",".join(request.ingredients),
@@ -504,9 +503,13 @@ def find_recipes_by_ingredients(request: IngredientSearchRequest):
         "ignorePantry": True,
         "apiKey": api_key
     }
+    print(f"Calling Spoonacular: {url} with params: {params}")
 
     try:
         resp = requests.get(url, params=params)
+        print(f"Spoonacular Status: {resp.status_code}")
+        print(f"Spoonacular Body: {resp.text}")
+        
         resp.raise_for_status()
         data = resp.json()
 

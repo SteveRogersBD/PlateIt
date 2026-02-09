@@ -7,6 +7,7 @@ public class SessionManager {
 
     private static final String PREF_NAME = "PlateItPref";
     private static final String IS_LOGGED_IN = "IsLoggedIn";
+    private static final String ONBOARDING_COMPLETED = "OnboardingCompleted";
     public static final String KEY_USER_ID = "userId";
     public static final String KEY_EMAIL = "email";
     public static final String KEY_USERNAME = "username";
@@ -35,5 +36,14 @@ public class SessionManager {
 
     public String getUserId() {
         return pref.getString(KEY_USER_ID, null);
+    }
+
+    public void setOnboardingCompleted() {
+        editor.putBoolean(ONBOARDING_COMPLETED, true);
+        editor.commit();
+    }
+
+    public boolean isOnboardingCompleted() {
+        return pref.getBoolean(ONBOARDING_COMPLETED, false);
     }
 }

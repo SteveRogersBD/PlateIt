@@ -36,4 +36,8 @@ public interface AgentApiService {
         @retrofit2.http.POST("recipes/findByIngredients")
         retrofit2.Call<java.util.List<com.example.plateit.responses.RecipeSummary>> findRecipesByIngredients(
                         @retrofit2.http.Body com.example.plateit.requests.IngredientSearchRequest request);
+
+        @retrofit2.http.POST("users/preferences")
+        retrofit2.Call<Void> updatePreferences(
+                        @retrofit2.http.Body com.example.plateit.requests.PreferencesRequest request);
 }
