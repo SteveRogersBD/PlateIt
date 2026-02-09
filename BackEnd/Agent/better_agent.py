@@ -2,7 +2,9 @@ import json
 import os
 import time
 import requests
-from typing import TypedDict, Annotated, Literal
+from typing import Annotated, Literal
+import typing_extensions
+TypedDict = typing_extensions.TypedDict
 from langgraph.graph import StateGraph, START, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage

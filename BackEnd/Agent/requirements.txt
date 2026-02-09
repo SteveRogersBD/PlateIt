@@ -15,3 +15,4 @@ beautifulsoup4
 google-generativeai
 yt-dlp
 python-multipart
+typing_extensions
