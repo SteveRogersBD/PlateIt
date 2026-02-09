@@ -1,7 +1,5 @@
 import os
-from typing import Annotated, Literal
-import typing_extensions
-TypedDict = typing_extensions.TypedDict
+from typing import Annotated, Literal, TypedDict
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage, BaseMessage
 from langgraph.graph import StateGraph, START, END
