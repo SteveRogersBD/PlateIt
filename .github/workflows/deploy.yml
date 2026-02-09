@@ -63,5 +63,6 @@ jobs:
           env_vars: |
             SPOONACULAR_API_KEY=${{ secrets.SPOONACULAR_API_KEY }}
             GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             SERP_API_KEY=${{ secrets.SERP_API_KEY }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
