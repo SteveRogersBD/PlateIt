@@ -198,37 +198,54 @@ public class HomeFragment extends Fragment {
                             RecipeBlogs blogResponse = response.body();
                             List<BlogItem> blogs = new ArrayList<>();
 
-                            // Check organic results
+                            int recipeCount = (blogResponse.recipes_results != null)
+                                    ? blogResponse.recipes_results.size()
+                                    : 0;
+                            int organicCount = (blogResponse.organic_results != null)
+                                    ? blogResponse.organic_results.size()
+                                    : 0;
+                            android.util.Log.d("HomeFragment",
+                                    "Found " + recipeCount + " recipes_results, " + organicCount + " organic_results");
+
+                            // 1. Check recipes_results (Prioritize these as they have better images)
+                            if (blogResponse.recipes_results != null) {
+                                for (RecipeBlogs.RecipesResult result : blogResponse.recipes_results) {
+                                    if (result.title != null && result.link != null) {
+                                        String thumbnail = result.thumbnail;
+                                        String source = result.source != null ? result.source : "Recipe";
+                                        String snippet = (result.ingredients != null
+                                                ? result.ingredients.size() + " ingredients"
+                                                : "");
+                                        blogs.add(new BlogItem(result.title, result.link, thumbnail, source, snippet));
+                                    }
+                                }
+                            }
+
+                            // 2. Check organic_results (Append as secondary)
                             if (blogResponse.organic_results != null) {
                                 for (RecipeBlogs.OrganicResult result : blogResponse.organic_results) {
                                     if (result.title != null && result.link != null) {
-                                        // Use the thumbnail field directly from POJO
+                                        // Use the thumbnail field directly from POJO or fallback to pagemap
                                         String thumbnail = result.thumbnail;
-                                        String source = result.source != null ? result.source : "Web";
+                                        // Fallback logic
+                                        if (thumbnail == null || thumbnail.isEmpty()) {
+                                            // Try pagemap logic if needed, or leave null
+                                        }
 
+                                        String source = result.source != null ? result.source : "Web";
                                         blogs.add(new BlogItem(result.title, result.link, thumbnail, source,
                                                 result.snippet));
                                     }
                                 }
                             }
 
-                            // Also check recipes_results if available
-                            if (blogResponse.recipes_results != null) {
-                                for (RecipeBlogs.RecipesResult result : blogResponse.recipes_results) {
-                                    if (result.title != null && result.link != null) {
-                                        String thumbnail = result.thumbnail;
-                                        String source = result.source != null ? result.source : "Recipe";
-                                        // Snippet might be missing in recipes_results, use ingredients count?
-                                        String snippet = (result.ingredients != null
-                                                ? result.ingredients.size() + " ingredients"
-                                                : "");
-
-                                        blogs.add(new BlogItem(result.title, result.link, thumbnail, source, snippet));
-                                    }
-                                }
+                            if (!blogs.isEmpty()) {
+                                String firstThumb = blogs.get(0).getThumbnail();
+                                Toast.makeText(getContext(), "First Thumb: " + firstThumb, Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(getContext(), "No blogs found!", Toast.LENGTH_SHORT).show();
                             }
-                            Toast.makeText(getContext(), blogs.get(0).getThumbnail(),
-                                    Toast.LENGTH_LONG).show();
+
                             adapter.updateData(blogs);
                         } else {
                             android.util.Log.e("HomeFragment", "SerpApi Failed: " + response.code());

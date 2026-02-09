@@ -64,7 +64,6 @@ public class CookingModeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        super.onCreate(savedInstanceState);
         // androidx.activity.EdgeToEdge.enable(this); // Disabled to restore standard
         // bars
         setContentView(R.layout.activity_cooking_mode);
@@ -243,8 +242,12 @@ public class CookingModeActivity extends AppCompatActivity {
         btnClose.setOnClickListener(v -> finish());
 
         // --- Assistant Logic ---
-        initializeTextToSpeech();
-        initializeSpeechRecognizer();
+        try {
+            initializeTextToSpeech();
+            initializeSpeechRecognizer();
+        } catch (Exception e) {
+            android.util.Log.e("CookingMode", "Voice Init Failed", e);
+        }
 
         btnMic.setOnClickListener(v -> {
             if (checkPermission()) {
