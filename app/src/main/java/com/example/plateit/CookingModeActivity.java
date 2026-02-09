@@ -37,7 +37,7 @@ public class CookingModeActivity extends AppCompatActivity {
 
     private ViewPager2 viewPager;
     private ProgressBar progressBar;
-    private ProgressBar apiLoadingIndicator;
+    private com.airbnb.lottie.LottieAnimationView apiLoadingIndicator;
     private TextView tvStepProgress;
     private TextView tvRecipeName;
     private CardView cvSourceCard;
@@ -64,7 +64,12 @@ public class CookingModeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        super.onCreate(savedInstanceState);
+        // androidx.activity.EdgeToEdge.enable(this); // Disabled to restore standard
+        // bars
         setContentView(R.layout.activity_cooking_mode);
+        // applyWindowInsets(); // Also disable manual insets handling since
+        // fitSystemWindows handles it now or standard behavior applies
 
         // Get Recipe from Intent (JSON Mode)
         try {
@@ -147,7 +152,12 @@ public class CookingModeActivity extends AppCompatActivity {
         try {
             CookingStepsAdapter adapter = new CookingStepsAdapter(steps);
             viewPager.setAdapter(adapter);
-            viewPager.setPageTransformer(new ZoomOutPageTransformer());
+            // More dramatic zoom/fade transformer
+            viewPager.setPageTransformer((page, position) -> {
+                float absPos = Math.abs(position);
+                page.setAlpha(1 - absPos * 0.5f);
+                page.setScaleY(0.85f + (1 - absPos) * 0.15f);
+            });
         } catch (Exception e) {
             Toast.makeText(this, "Adapter Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
@@ -601,9 +611,29 @@ public class CookingModeActivity extends AppCompatActivity {
         }
     }
 
+    private void applyWindowInsets() {
+        View CompatView = findViewById(R.id.topBar);
+        if (CompatView != null) {
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(CompatView, (v, insets) -> {
+                androidx.core.graphics.Insets statusBars = insets
+                        .getInsets(androidx.core.view.WindowInsetsCompat.Type.statusBars());
+                // Only pad the top, keep the rest edge-to-edge
+                v.setPadding(v.getPaddingLeft(), statusBars.top + v.getPaddingTop(), v.getPaddingRight(),
+                        v.getPaddingBottom());
+                return insets;
+            });
+        }
+    }
+
     private void setApiLoading(boolean isLoading) {
         if (apiLoadingIndicator != null) {
-            apiLoadingIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+            if (isLoading) {
+                apiLoadingIndicator.setVisibility(View.VISIBLE);
+                apiLoadingIndicator.playAnimation();
+            } else {
+                apiLoadingIndicator.cancelAnimation();
+                apiLoadingIndicator.setVisibility(View.GONE);
+            }
         }
     }
 

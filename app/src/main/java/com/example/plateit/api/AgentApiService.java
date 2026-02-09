@@ -32,4 +32,12 @@ public interface AgentApiService {
 
         @retrofit2.http.DELETE("pantry/{item_id}")
         retrofit2.Call<Void> deletePantryItem(@retrofit2.http.Path("item_id") int itemId);
+
+        @retrofit2.http.POST("recipes/findByIngredients")
+        retrofit2.Call<java.util.List<com.example.plateit.responses.RecipeSummary>> findRecipesByIngredients(
+                        @retrofit2.http.Body com.example.plateit.requests.IngredientSearchRequest request);
+
+        @retrofit2.http.POST("users/preferences")
+        retrofit2.Call<Void> updatePreferences(
+                        @retrofit2.http.Body com.example.plateit.requests.PreferencesRequest request);
 }

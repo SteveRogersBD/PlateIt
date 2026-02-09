@@ -134,8 +134,9 @@ public class HomeFragment extends Fragment {
         String userId = sessionManager.getUserId();
 
         if (userId != null) {
-            fetchVideoRecommendations(userId, videoAdapter);
-            fetchBlogRecommendations(userId, blogAdapter);
+            // fetchVideoRecommendations(userId, videoAdapter); // Disabled to save API
+            // calls
+            // fetchBlogRecommendations(userId, blogAdapter); // Disabled to save API calls
         } else {
             // Fallback or Prompt Login
             Toast.makeText(getContext(), "Please sign in for recommendations", Toast.LENGTH_SHORT).show();
@@ -267,7 +268,7 @@ public class HomeFragment extends Fragment {
 
         btnExtract.setOnClickListener(v -> {
             bottomSheetDialog.dismiss();
-            extractRecipe(blog.getLink());
+            extractRecipe(blog.getLink(), blog.getThumbnail());
         });
 
         btnRead.setOnClickListener(v -> {
@@ -378,7 +379,7 @@ public class HomeFragment extends Fragment {
 
         btnExtract.setOnClickListener(v -> {
             bottomSheetDialog.dismiss();
-            extractRecipe(video.getLink());
+            extractRecipe(video.getLink(), video.getThumbnail());
         });
 
         btnWatch.setOnClickListener(v -> {
@@ -393,18 +394,56 @@ public class HomeFragment extends Fragment {
         bottomSheetDialog.show();
     }
 
+    private android.app.Dialog extractionDialog;
+
+    private void showExtractionProgress(String contextUrl) {
+        extractionDialog = new android.app.Dialog(requireContext());
+        extractionDialog.setContentView(R.layout.dialog_extraction_progress);
+        extractionDialog.getWindow()
+                .setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        extractionDialog.setCancelable(false);
+
+        // Populate with thumbnail if available (from video list or blog list context)
+        // Since we only have URL here, we might not have the image easily unless
+        // passed.
+        // For now, we will try to find it or just show generic background.
+
+        // Actually, let's pass the thumbnail URL to extractRecipe if possible, but for
+        // now we'll stick to a nice blurred background.
+
+        extractionDialog.show();
+    }
+
     private void extractRecipe(String url) {
-        android.app.ProgressDialog progressDialog = new android.app.ProgressDialog(getContext());
-        progressDialog.setMessage("Extracting Recipe...");
-        progressDialog.setCancelable(false);
-        progressDialog.show();
+        extractRecipe(url, "");
+    }
+
+    private void extractRecipe(String url, String thumbnailUrl) {
+        // Show Custom Dialog
+        extractionDialog = new android.app.Dialog(requireContext());
+        extractionDialog.setContentView(R.layout.dialog_extraction_progress);
+        extractionDialog.getWindow()
+                .setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        extractionDialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        extractionDialog.setCancelable(false);
+
+        ImageView imgBg = extractionDialog.findViewById(R.id.imgBackgroundThumbnail);
+        if (thumbnailUrl != null && !thumbnailUrl.isEmpty()) {
+            com.squareup.picasso.Picasso.get().load(thumbnailUrl).into(imgBg);
+        } else {
+            imgBg.setImageResource(R.drawable.ic_launcher_background); // Or a default drawable
+        }
+
+        extractionDialog.show();
 
         VideoRequest request = new VideoRequest(url);
         RetrofitClient.getService().extractRecipe(request)
                 .enqueue(new Callback<RecipeResponse>() {
                     @Override
                     public void onResponse(Call<RecipeResponse> call, Response<RecipeResponse> response) {
-                        progressDialog.dismiss();
+                        if (extractionDialog != null)
+                            extractionDialog.dismiss();
                         if (response.isSuccessful() && response.body() != null) {
                             showRecipePreviewDialog(response.body());
                         } else {
@@ -415,7 +454,8 @@ public class HomeFragment extends Fragment {
 
                     @Override
                     public void onFailure(Call<RecipeResponse> call, Throwable t) {
-                        progressDialog.dismiss();
+                        if (extractionDialog != null)
+                            extractionDialog.dismiss();
                         Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });

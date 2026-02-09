@@ -2,7 +2,9 @@ import json
 import os
 import time
 import requests
-from typing import TypedDict, Annotated, Literal
+from typing import Annotated, Literal
+import typing_extensions
+TypedDict = typing_extensions.TypedDict
 from langgraph.graph import StateGraph, START, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -27,10 +29,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- HARDCODED GEMINI KEY ---
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
-os.environ["GEMINI_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
-# ----------------------------
+# --- HARDCODED GEMINI KEY REMOVED ---
+# Keys should be provided via environment variables.
 
 # --- Data Models ---
 
@@ -295,7 +295,7 @@ def node_analyze_image_type(state: AgentState):
     
     try:
         image_file = genai.upload_file(path=image_path)
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-3-flash-preview')
         
         prompt = """
         Analyze this image. 

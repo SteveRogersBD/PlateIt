@@ -10,7 +10,11 @@
         <scale android:scaleWidth="100%">
             <shape>
                 <corners android:radius="4dp"/>
-                <solid android:color="@color/app_primary"/>
+                <gradient
+                    android:startColor="@color/chef_orange"
+                    android:endColor="@color/chef_orange_light"
+                    android:angle="0"
+                    />
             </shape>
         </scale>
     </item>

@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from typing import Optional
+from typing import Optional, List
 import uuid
 import os
+import requests
 from dotenv import load_dotenv
+from schemas_pantry import IngredientSearchRequest, RecipeSummary
 
 load_dotenv()
 
@@ -16,10 +18,8 @@ import random
 
 app = FastAPI()
 
-# --- HARDCODED GEMINI KEY ---
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
-os.environ["GEMINI_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
-# ----------------------------
+# Keys are loaded from environment variables (Cloud Run or .env file)
+# os.environ["GOOGLE_API_KEY"] and "GEMINI_API_KEY" should be set in the environment.
 
 # --- Auth Models ---
 class SignupRequest(BaseModel):
@@ -93,19 +93,36 @@ def signin(request: SigninRequest, session: Session = Depends(get_session)):
         message="Login successful"
     )
 
-@app.post("/preferences/update")
+@app.post("/users/preferences")
 def update_preferences(request: UpdatePreferencesRequest, session: Session = Depends(get_session)):
-    user = session.get(User, request.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    print(f"--- Update Preferences Request ---")
+    print(f"User ID: {request.user_id}")
+    print(f"Preferences: {request.preferences}")
     
-    user.preferences = request.preferences
-    session.add(user)
-    session.commit()
-    
-    return {"message": "Preferences updated", "preferences": user.preferences}
+    try:
+        user = session.get(User, request.user_id)
+        if not user:
+            print(f"User not found: {request.user_id}")
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        print(f"Found user: {user.email}")
+        user.preferences = request.preferences
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        
+        print(f"Preferences updated successfully: {user.preferences}")
+        return {"message": "Preferences updated", "preferences": user.preferences}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating preferences: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/preferences/{user_id}")
+
+@app.get("/users/preferences/{user_id}")
 def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session)):
     user = session.get(User, user_id)
     if not user:
@@ -113,25 +130,6 @@ def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session))
         
     return {"preferences": user.preferences}
 
-@app.post("/preferences/update")
-def update_preferences(request: UpdatePreferencesRequest, session: Session = Depends(get_session)):
-    user = session.get(User, request.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    user.preferences = request.preferences
-    session.add(user)
-    session.commit()
-    
-    return {"message": "Preferences updated", "preferences": user.preferences}
-
-@app.get("/preferences/{user_id}")
-def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    return {"preferences": user.preferences}
 
 # --- Video Recommendation Endpoint ---
 @app.get("/recommendations/videos/{user_id}")
@@ -483,6 +481,56 @@ async def scan_pantry(request: PantryScanRequest):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- Pantry Recipe Search ---
+@app.post("/recipes/findByIngredients", response_model=List[RecipeSummary])
+def find_recipes_by_ingredients(request: IngredientSearchRequest):
+    """
+    Find recipes that use the given ingredients.
+    """
+    api_key = os.getenv("SPOONACULAR_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="SPOONACULAR_API_KEY not configured")
+
+    if not request.ingredients:
+        return []
+
+    print(f"--- Recipe Search Request: {request.ingredients} ---")
+    url = "https://api.spoonacular.com/recipes/findByIngredients"
+    params = {
+        "ingredients": ",".join(request.ingredients),
+        "number": request.number,
+        "ranking": 2, # Minimize missing ingredients
+        "ignorePantry": True,
+        "apiKey": api_key
+    }
+    print(f"Calling Spoonacular: {url} with params: {params}")
+
+    try:
+        resp = requests.get(url, params=params)
+        print(f"Spoonacular Status: {resp.status_code}")
+        print(f"Spoonacular Body: {resp.text}")
+        
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Map to our model
+        results = []
+        for item in data:
+            results.append(RecipeSummary(
+                id=item.get("id"),
+                title=item.get("title"),
+                image=item.get("image"),
+                usedIngredientCount=item.get("usedIngredientCount", 0),
+                missedIngredientCount=item.get("missedIngredientCount", 0),
+                likes=item.get("likes", 0)
+            ))
+        
+        return results
+
+    except Exception as e:
+        print(f"Error finding recipes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 def _get_image_for_item(item_name: str) -> str:
     """
     Tries to find an image URL for the given item name.
@@ -542,4 +590,5 @@ def get_ingredient_image_endpoint(query: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run(app, host="0.0.0.0", port=port)

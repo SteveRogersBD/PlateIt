@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/soft_cream"
+    android:fitsSystemWindows="true"
     tools:context=".CookingModeActivity">
 
     <!-- Top Bar -->
@@ -14,6 +15,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="24dp"
+        android:animateLayoutChanges="true"
         app:layout_constraintTop_toTopOf="parent">
 
         <RelativeLayout
@@ -121,13 +123,16 @@
             android:max="100"/>
     </LinearLayout>
 
-    <!-- Global Loading Indicator -->
-    <ProgressBar
+    <!-- Global Loading Indicator - Lottie -->
+    <com.airbnb.lottie.LottieAnimationView
         android:id="@+id/apiLoadingIndicator"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="150dp"
+        android:layout_height="150dp"
         android:visibility="gone"
-        android:elevation="10dp"
+        android:elevation="20dp"
+        app:lottie_rawRes="@raw/cooking"
+        app:lottie_autoPlay="true"
+        app:lottie_loop="true"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -140,6 +145,7 @@
         android:layout_height="0dp"
         android:layout_marginHorizontal="24dp"
         android:layout_marginBottom="16dp"
+        android:animateLayoutChanges="true"
         app:layout_constraintTop_toBottomOf="@id/topBar"
         app:layout_constraintBottom_toTopOf="@id/cvAssistantResponse" />
 

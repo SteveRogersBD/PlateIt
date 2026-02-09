@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Selected: Black icon (on Yellow Pill) -->
-    <item android:state_checked="true" android:color="@color/tech_black" />
-    <!-- Default: Gray icon -->
-    <item android:color="#757575" />
+    <item android:state_checked="true" android:color="@color/chef_orange" />
+    <item android:color="@color/gray_600" />
 </selector>

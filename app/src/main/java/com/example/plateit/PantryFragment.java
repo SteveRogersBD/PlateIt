@@ -68,15 +68,192 @@ public class PantryFragment extends Fragment {
         progressBar = view.findViewById(R.id.progressBar);
         tvEmpty = view.findViewById(R.id.tvEmpty);
         ExtendedFloatingActionButton fabAdd = view.findViewById(R.id.fabAdd);
+        com.google.android.material.button.MaterialButton btnCookWithPantry = view.findViewById(R.id.btnCookWithPantry);
 
         rvPantryItems.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new PantryAdapter(pantryTypeList, item -> deleteItem(item));
         rvPantryItems.setAdapter(adapter);
 
         fabAdd.setOnClickListener(v -> showAddOptions());
+        btnCookWithPantry.setOnClickListener(v -> cookWithPantry());
 
         sessionManager = new com.example.plateit.utils.SessionManager(requireContext());
         loadPantryItems();
+    }
+
+    private void cookWithPantry() {
+        if (pantryTypeList.isEmpty()) {
+            Toast.makeText(getContext(), "Pantry is empty! Add items first.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        showIngredientSelectionDialog();
+    }
+
+    private void showIngredientSelectionDialog() {
+        // Prepare list of ingredient names
+        String[] ingredients = new String[pantryTypeList.size()];
+        boolean[] checkedItems = new boolean[pantryTypeList.size()];
+        for (int i = 0; i < pantryTypeList.size(); i++) {
+            ingredients[i] = pantryTypeList.get(i).name;
+            checkedItems[i] = true; // Default all selected
+        }
+
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Select Ingredients")
+                .setMultiChoiceItems(ingredients, checkedItems, (dialog, which, isChecked) -> {
+                    checkedItems[which] = isChecked;
+                })
+                .setPositiveButton("Find Recipes", (dialog, which) -> {
+                    List<String> selectedIngredients = new ArrayList<>();
+                    for (int i = 0; i < checkedItems.length; i++) {
+                        if (checkedItems[i]) {
+                            selectedIngredients.add(ingredients[i]);
+                        }
+                    }
+                    if (!selectedIngredients.isEmpty()) {
+                        findRecipesByIngredients(selectedIngredients);
+                    } else {
+                        Toast.makeText(getContext(), "Select at least one ingredient", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void findRecipesByIngredients(List<String> ingredients) {
+        progressBar.setVisibility(View.VISIBLE);
+        com.example.plateit.requests.IngredientSearchRequest request = new com.example.plateit.requests.IngredientSearchRequest(
+                ingredients, 10);
+
+        RetrofitClient.getAgentService().findRecipesByIngredients(request)
+                .enqueue(new Callback<List<com.example.plateit.responses.RecipeSummary>>() {
+                    @Override
+                    public void onResponse(Call<List<com.example.plateit.responses.RecipeSummary>> call,
+                            Response<List<com.example.plateit.responses.RecipeSummary>> response) {
+                        progressBar.setVisibility(View.GONE);
+                        if (response.isSuccessful() && response.body() != null && !response.body().isEmpty()) {
+                            showRecipeResultsDialog(response.body());
+                        } else {
+                            Toast.makeText(getContext(), "No matching recipes found.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<List<com.example.plateit.responses.RecipeSummary>> call, Throwable t) {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    private void showRecipeResultsDialog(List<com.example.plateit.responses.RecipeSummary> recipes) {
+        com.google.android.material.bottomsheet.BottomSheetDialog bottomSheetDialog = new com.google.android.material.bottomsheet.BottomSheetDialog(
+                requireContext());
+        View sheetView = getLayoutInflater().inflate(R.layout.dialog_pantry_recipes, null);
+        bottomSheetDialog.setContentView(sheetView);
+
+        RecyclerView rvResults = sheetView.findViewById(R.id.rvRecipeResults);
+        rvResults.setLayoutManager(new LinearLayoutManager(getContext()));
+
+        // Creating a simple inner adapter or using a new separate adapter class?
+        // For brevity, I'll assume we need to create 'PantryRecipeAdapter'.
+        // I will use a simple inline binding logic or placeholder for now,
+        // but user requested to "show returned recipes".
+        // Let's create a quick adapter here or assume one exists.
+        // I'll create a simple adapter inside this method or class.
+
+        PantryRecipeAdapter recipeAdapter = new PantryRecipeAdapter(recipes, recipe -> {
+            bottomSheetDialog.dismiss();
+            fetchFullRecipeDetails(recipe.getId());
+        });
+        rvResults.setAdapter(recipeAdapter);
+
+        bottomSheetDialog.show();
+    }
+
+    private void fetchFullRecipeDetails(int recipeId) {
+        progressBar.setVisibility(View.VISIBLE);
+        Toast.makeText(getContext(), "Loading recipe details...", Toast.LENGTH_SHORT).show();
+
+        RetrofitClient.getAgentService().getRecipeDetails(recipeId)
+                .enqueue(new Callback<com.example.plateit.responses.RecipeResponse>() {
+                    @Override
+                    public void onResponse(Call<com.example.plateit.responses.RecipeResponse> call,
+                            Response<com.example.plateit.responses.RecipeResponse> response) {
+                        progressBar.setVisibility(View.GONE);
+                        if (response.isSuccessful() && response.body() != null) {
+                            // Navigate to RecipeActivity
+                            Intent intent = new Intent(getContext(), RecipeActivity.class);
+                            // Pass JSON
+                            String json = new com.google.gson.Gson().toJson(response.body());
+                            intent.putExtra("recipe_json", json);
+                            startActivity(intent);
+                        } else {
+                            Toast.makeText(getContext(), "Failed to load details.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<com.example.plateit.responses.RecipeResponse> call, Throwable t) {
+                        progressBar.setVisibility(View.GONE);
+                        Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    // Internal Adapter Class for Recipe Results
+    private static class PantryRecipeAdapter extends RecyclerView.Adapter<PantryRecipeAdapter.ViewHolder> {
+        private final List<com.example.plateit.responses.RecipeSummary> recipes;
+        private final OnRecipeClickListener listener;
+
+        interface OnRecipeClickListener {
+            void onRecipeClick(com.example.plateit.responses.RecipeSummary recipe);
+        }
+
+        public PantryRecipeAdapter(List<com.example.plateit.responses.RecipeSummary> recipes,
+                OnRecipeClickListener listener) {
+            this.recipes = recipes;
+            this.listener = listener;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_pantry_recipe_result, parent,
+                    false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            com.example.plateit.responses.RecipeSummary recipe = recipes.get(position);
+            holder.tvTitle.setText(recipe.getTitle());
+            holder.tvInfo.setText(
+                    "Used: " + recipe.getUsedIngredientCount() + " | Missing: " + recipe.getMissedIngredientCount());
+
+            if (recipe.getImage() != null && !recipe.getImage().isEmpty()) {
+                com.squareup.picasso.Picasso.get().load(recipe.getImage()).into(holder.imgThumbnail);
+            }
+
+            holder.itemView.setOnClickListener(v -> listener.onRecipeClick(recipe));
+        }
+
+        @Override
+        public int getItemCount() {
+            return recipes.size();
+        }
+
+        static class ViewHolder extends RecyclerView.ViewHolder {
+            TextView tvTitle, tvInfo;
+            android.widget.ImageView imgThumbnail;
+
+            ViewHolder(View itemView) {
+                super(itemView);
+                tvTitle = itemView.findViewById(R.id.tvRecipeTitle);
+                tvInfo = itemView.findViewById(R.id.tvRecipeInfo);
+                imgThumbnail = itemView.findViewById(R.id.imgRecipeThumbnail);
+            }
+        }
     }
 
     private void showAddOptions() {
