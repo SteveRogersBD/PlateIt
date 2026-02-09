@@ -1,7 +1,6 @@
 package com.example.plateit;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
+import com.google.gson.annotations.SerializedName;
 import java.util.ArrayList;
 
 public class RecipeBlogs {
@@ -9,7 +8,11 @@ public class RecipeBlogs {
     public SearchMetadata search_metadata;
     public SearchParameters search_parameters;
     public SearchInformation search_information;
+
+    @SerializedName(value = "recipes_results", alternate = { "recipe_results" })
     public ArrayList<RecipesResult> recipes_results;
+
+    @SerializedName("organic_results")
     public ArrayList<OrganicResult> organic_results;
     public ArrayList<RelatedSearch> related_searches;
     public ArrayList<DiscussionsAndForum> discussions_and_forums;
@@ -43,26 +46,40 @@ public class RecipeBlogs {
         public ArrayList<String> snippet_highlighted_words;
         public String source;
         public String thumbnail;
+        public Pagemap pagemap;
+    }
+
+    public class Pagemap {
+        public ArrayList<CSEImage> cse_image;
+        public ArrayList<CSEThumbnail> cse_thumbnail;
+    }
+
+    public class CSEImage {
+        public String src;
+    }
+
+    public class CSEThumbnail {
+        public String src;
     }
 
     public class OtherPages {
-        @JsonProperty("2")
+        @SerializedName("2")
         public String _2;
-        @JsonProperty("3")
+        @SerializedName("3")
         public String _3;
-        @JsonProperty("4")
+        @SerializedName("4")
         public String _4;
-        @JsonProperty("5")
+        @SerializedName("5")
         public String _5;
-        @JsonProperty("6")
+        @SerializedName("6")
         public String _6;
-        @JsonProperty("7")
+        @SerializedName("7")
         public String _7;
-        @JsonProperty("8")
+        @SerializedName("8")
         public String _8;
-        @JsonProperty("9")
+        @SerializedName("9")
         public String _9;
-        @JsonProperty("10")
+        @SerializedName("10")
         public String _10;
     }
 

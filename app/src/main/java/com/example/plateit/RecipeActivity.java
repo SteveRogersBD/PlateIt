@@ -56,7 +56,13 @@ public class RecipeActivity extends AppCompatActivity {
                 String jsonModel = new com.google.gson.Gson().toJson(recipeModel);
                 intent.putExtra("recipe_json", jsonModel);
 
-                startActivity(intent);
+                try {
+                    startActivity(intent);
+                } catch (Exception e) {
+                    android.util.Log.e("RecipeActivity", "Error starting CookingMode: " + e.getMessage());
+                    android.widget.Toast.makeText(this, "Error starting cooking mode: " + e.getMessage(),
+                            android.widget.Toast.LENGTH_LONG).show();
+                }
             } else {
                 android.widget.Toast.makeText(this, "No steps available!", android.widget.Toast.LENGTH_SHORT).show();
             }

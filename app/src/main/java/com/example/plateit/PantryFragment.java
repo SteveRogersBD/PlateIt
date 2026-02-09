@@ -37,6 +37,10 @@ import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import com.example.plateit.db.PantryItem;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
 
 public class PantryFragment extends Fragment {
 
@@ -385,7 +389,13 @@ public class PantryFragment extends Fragment {
     private void saveItem(String name, String amount, String imageUrl) {
         String userId = sessionManager.getUserId();
         if (userId == null) {
-            Toast.makeText(getContext(), "User not logged in", Toast.LENGTH_SHORT).show();
+            // Local fallback
+            List<PantryItem> items = getLocalPantry();
+            PantryItem newItem = new PantryItem(name, amount, System.currentTimeMillis(), imageUrl);
+            newItem.id = (int) (System.currentTimeMillis() % Integer.MAX_VALUE);
+            items.add(newItem);
+            saveLocalPantry(items);
+            loadPantryItems(); // Reload
             return;
         }
 
@@ -415,8 +425,18 @@ public class PantryFragment extends Fragment {
     private void saveBatchItems(List<PantryScanResponse.PantryItem> scannedItems) {
         // Sequentially add items (Simple implementation, ideally batch endpoint)
         String userId = sessionManager.getUserId();
-        if (userId == null)
+        if (userId == null) {
+            List<PantryItem> current = getLocalPantry();
+            for (PantryScanResponse.PantryItem s : scannedItems) {
+                PantryItem p = new PantryItem(s.getName(), s.getAmount(), System.currentTimeMillis(), s.getImageUrl());
+                p.id = (int) ((System.currentTimeMillis() + java.util.UUID.randomUUID().hashCode())
+                        % Integer.MAX_VALUE);
+                current.add(p);
+            }
+            saveLocalPantry(current);
+            loadPantryItems();
             return;
+        }
 
         Toast.makeText(getContext(), "Saving " + scannedItems.size() + " items...", Toast.LENGTH_SHORT).show();
 
@@ -439,6 +459,21 @@ public class PantryFragment extends Fragment {
     }
 
     private void deleteItem(PantryItem item) {
+        if (sessionManager.getUserId() == null) {
+            // Local fallback
+            List<PantryItem> items = getLocalPantry();
+            // Remove by ID
+            for (int i = 0; i < items.size(); i++) {
+                if (items.get(i).id == item.id) {
+                    items.remove(i);
+                    break;
+                }
+            }
+            saveLocalPantry(items);
+            loadPantryItems(); // Reload
+            return;
+        }
+
         RetrofitClient.getAgentService().deletePantryItem(item.id).enqueue(new Callback<Void>() {
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
@@ -457,8 +492,13 @@ public class PantryFragment extends Fragment {
 
     private void loadPantryItems() {
         String userId = sessionManager.getUserId();
-        if (userId == null)
+        if (userId == null) {
+            // Local fallback
+            pantryTypeList = getLocalPantry();
+            adapter.updateList(pantryTypeList);
+            tvEmpty.setVisibility(pantryTypeList.isEmpty() ? View.VISIBLE : View.GONE);
             return;
+        }
 
         progressBar.setVisibility(View.VISIBLE);
         RetrofitClient.getAgentService().getPantryItems(userId).enqueue(new Callback<List<PantryItem>>() {
@@ -492,5 +532,21 @@ public class PantryFragment extends Fragment {
                 Toast.makeText(getContext(), "Failed to load pantry: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    // Local Storage Helpers
+    private List<PantryItem> getLocalPantry() {
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("LocalPantry",
+                android.content.Context.MODE_PRIVATE);
+        String json = prefs.getString("items", "[]");
+        Type type = new TypeToken<List<PantryItem>>() {
+        }.getType();
+        return new Gson().fromJson(json, type);
+    }
+
+    private void saveLocalPantry(List<PantryItem> items) {
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("LocalPantry",
+                android.content.Context.MODE_PRIVATE);
+        prefs.edit().putString("items", new Gson().toJson(items)).apply();
     }
 }

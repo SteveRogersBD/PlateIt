@@ -10,6 +10,10 @@ from schemas_pantry import IngredientSearchRequest, RecipeSummary
 
 load_dotenv()
 
+# Video Demo: Hardcoded keys
+os.environ["GOOGLE_API_KEY"] = "AIzaSyCGBOPpSv6YWuR1xWyMIEMI6OqKGTzUmYM"
+os.environ["GEMINI_API_KEY"] = "AIzaSyCGBOPpSv6YWuR1xWyMIEMI6OqKGTzUmYM"
+
 from better_agent import workflow as recipe_workflow
 from database import get_session, create_db_and_tables
 from models import User, PantryItem
@@ -135,10 +139,10 @@ def get_preferences(user_id: uuid.UUID, session: Session = Depends(get_session))
 @app.get("/recommendations/videos/{user_id}")
 def get_video_recommendations(user_id: uuid.UUID, session: Session = Depends(get_session)):
     user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    preferences = user.preferences if user.preferences else []
+    # Video Demo: Allow missing user
+    preferences = []
+    if user:
+        preferences = user.preferences if user.preferences else []
     all_videos = []
     seen_links = set()
 
@@ -150,13 +154,8 @@ def get_video_recommendations(user_id: uuid.UUID, session: Session = Depends(get
     else:
         target_prefs = preferences
 
-    # Prepare queries
-    queries = []
-    if not target_prefs:
-        queries.append("trending cooking recipes")
-    else:
-        for p in target_prefs:
-            queries.append(f"{p} recipes")
+    # Video Demo: Hardcode Chicken Recipe
+    queries = ["chicken recipe"]
 
     print(f"Fetching videos for topics: {queries}")
 

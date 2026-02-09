@@ -27,7 +27,9 @@ from tools import (
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Video Demo: Hardcoded keys
+os.environ["GOOGLE_API_KEY"] = "AIzaSyCGBOPpSv6YWuR1xWyMIEMI6OqKGTzUmYM"
+os.environ["GEMINI_API_KEY"] = "AIzaSyCGBOPpSv6YWuR1xWyMIEMI6OqKGTzUmYM"
 
 # --- HARDCODED GEMINI KEY REMOVED ---
 # Keys should be provided via environment variables.

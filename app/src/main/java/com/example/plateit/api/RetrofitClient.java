@@ -6,7 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class RetrofitClient {
     // Updated to local IP for physical device testing. Ensure your phone is on the
     // same WiFi.
-    private static final String BASE_URL = "http://192.168.1.249:8000/";
+    private static final String BASE_URL = "http://192.168.1.249:8080/";
     private static Retrofit recipefit = null;
 
     public static RecipeApiService getService() {
