@@ -4,9 +4,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class RetrofitClient {
-    // Updated to local IP for physical device testing. Ensure your phone is on the
-    // same WiFi.
-    private static final String BASE_URL = "http://10.0.2.2:8000/";
+    // Cloud Run URL
+    private static final String BASE_URL = "https://plateit-agent-964229332293.us-central1.run.app/";
     private static Retrofit recipefit = null;
 
     public static RecipeApiService getService() {

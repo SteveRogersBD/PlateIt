@@ -3,18 +3,25 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     
-    <!-- Pop & Tech Palette -->
-    <color name="banana_yellow">#FFE135</color>
-    <color name="banana_yellow_dark">#FDD835</color>
-    <color name="tech_black">#000000</color>
-    <color name="plain_white">#FFFFFF</color>
-    <color name="gemini_purple">#CDDC39</color>
+    <!-- Chef's Palette - Modern & Appetizing -->
+    <color name="chef_orange">#FF6D00</color>       <!-- Primary Action (Warm/Zesty) -->
+    <color name="chef_orange_light">#FFE0B2</color> <!-- Secondary Highlights -->
+    <color name="chef_dark">#212121</color>         <!-- Text / Contrast -->
+    <color name="chef_background">#F5F5F7</color>   <!-- Modern Off-White BG -->
+    <color name="chef_surface">#FFFFFF</color>      <!-- Card Surfaces -->
+    <color name="chef_green">#4CAF50</color>        <!-- Success / Freshness -->
+    <color name="chef_red">#E53935</color>          <!-- Alert / Heat -->
     
-    <!-- Legacy/UI Colors -->
-    <color name="soft_cream">#F5F5F7</color>
+    <!-- Legacy Mappings for Compatibility -->
+    <color name="banana_yellow">@color/chef_orange</color>
+    <color name="banana_yellow_dark">#EF6C00</color>
+    <color name="tech_black">@color/chef_dark</color>
+    <color name="plain_white">@color/chef_background</color>
+    <color name="gemini_purple">@color/chef_orange</color>
+    <color name="soft_cream">@color/chef_background</color>
     
-    <!-- New UI Colors -->
+    <!-- UI Specifics -->
     <color name="gray_600">#757575</color>
     <color name="gray_800">#424242</color>
-    <color name="app_primary">#FFE135</color>
+    <color name="app_primary">@color/chef_orange</color>
 </resources>

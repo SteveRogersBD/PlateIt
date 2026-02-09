@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
 from sqlmodel import Session, select
-from typing import Optional
+from typing import Optional, List
 import uuid
 import os
+import requests
 from dotenv import load_dotenv
+from schemas_pantry import IngredientSearchRequest, RecipeSummary
 
 load_dotenv()
 
@@ -479,6 +480,51 @@ async def scan_pantry(request: PantryScanRequest):
         print(f"Pantry Scan Error: {e}")
         import traceback
         traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Pantry Recipe Search ---
+@app.post("/recipes/findByIngredients", response_model=List[RecipeSummary])
+def find_recipes_by_ingredients(request: IngredientSearchRequest):
+    """
+    Find recipes that use the given ingredients.
+    """
+    api_key = os.getenv("SPOONACULAR_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="SPOONACULAR_API_KEY not configured")
+
+    if not request.ingredients:
+        return []
+
+    url = "https://api.spoonacular.com/recipes/findByIngredients"
+    params = {
+        "ingredients": ",".join(request.ingredients),
+        "number": request.number,
+        "ranking": 2, # Minimize missing ingredients
+        "ignorePantry": True,
+        "apiKey": api_key
+    }
+
+    try:
+        resp = requests.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Map to our model
+        results = []
+        for item in data:
+            results.append(RecipeSummary(
+                id=item.get("id"),
+                title=item.get("title"),
+                image=item.get("image"),
+                usedIngredientCount=item.get("usedIngredientCount", 0),
+                missedIngredientCount=item.get("missedIngredientCount", 0),
+                likes=item.get("likes", 0)
+            ))
+        
+        return results
+
+    except Exception as e:
+        print(f"Error finding recipes: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def _get_image_for_item(item_name: str) -> str:
