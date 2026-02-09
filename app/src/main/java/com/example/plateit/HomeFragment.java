@@ -109,8 +109,8 @@ public class HomeFragment extends Fragment {
 
         // --- 3. RecyclerView Setup ---
 
-        // Videos (Horizontal)
-        LinearLayoutManager videoLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL,
+        // Videos (Vertical)
+        LinearLayoutManager videoLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL,
                 false);
         rvRecipes.setLayoutManager(videoLayoutManager);
 
@@ -118,25 +118,13 @@ public class HomeFragment extends Fragment {
         VideoAdapter videoAdapter = new VideoAdapter(new ArrayList<>(), this::showVideoOptionsDialog);
         rvRecipes.setAdapter(videoAdapter);
 
-        // Blogs (Horizontal)
-        RecyclerView rvBlogs = view.findViewById(R.id.rvBlogs);
-        LinearLayoutManager blogLayoutManager = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL,
-                false);
-        rvBlogs.setLayoutManager(blogLayoutManager);
-
-        // Initialize Blog Adapter
-        BlogAdapter blogAdapter = new BlogAdapter(new ArrayList<>(), this::showBlogOptionsDialog);
-        rvBlogs.setAdapter(blogAdapter);
-
         // Fetch Real Data
         com.example.plateit.utils.SessionManager sessionManager = new com.example.plateit.utils.SessionManager(
                 getContext());
         String userId = sessionManager.getUserId();
 
         if (userId != null) {
-            // fetchVideoRecommendations(userId, videoAdapter); // Disabled to save API
-            // calls
-            // fetchBlogRecommendations(userId, blogAdapter); // Disabled to save API calls
+            fetchVideoRecommendations(userId, videoAdapter);
         } else {
             // Fallback or Prompt Login
             Toast.makeText(getContext(), "Please sign in for recommendations", Toast.LENGTH_SHORT).show();
@@ -153,6 +141,7 @@ public class HomeFragment extends Fragment {
     }
 
     private void fetchVideoRecommendations(String userId, VideoAdapter adapter) {
+        android.util.Log.d("HomeFragment", "Fetching videos for user: " + userId);
         RetrofitClient.getService().getRecommendations(userId)
                 .enqueue(new Callback<com.example.plateit.responses.VideoRecommendationResponse>() {
                     @Override
@@ -160,144 +149,23 @@ public class HomeFragment extends Fragment {
                             Response<com.example.plateit.responses.VideoRecommendationResponse> response) {
                         if (response.isSuccessful() && response.body() != null) {
                             List<RecipeVideo> videos = response.body().getVideos();
+                            android.util.Log.d("HomeFragment",
+                                    "Videos fetched: " + (videos != null ? videos.size() : 0));
                             if (videos != null && !videos.isEmpty()) {
                                 adapter.updateData(videos);
                             }
                         } else {
-                            // Silent failure or log
+                            android.util.Log.e("HomeFragment", "Video Fetch Failed: " + response.code());
                         }
                     }
 
                     @Override
                     public void onFailure(Call<com.example.plateit.responses.VideoRecommendationResponse> call,
                             Throwable t) {
-                        // Network error
+                        android.util.Log.e("HomeFragment", "Video Network Error: " + t.getMessage(), t);
                         Toast.makeText(getContext(), "Network error loading videos", Toast.LENGTH_SHORT).show();
                     }
                 });
-    }
-
-    private void fetchBlogRecommendations(String userId, BlogAdapter adapter) {
-        // Use SerpApi directly from Android
-        String apiKey = BuildConfig.SERP_API_KEY;
-        if (apiKey == null || apiKey.isEmpty()) {
-            Toast.makeText(getContext(), "SerpApi Key Missing", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Default query since we don't have easy access to user prefs unless fetched
-        // first.
-        String query = "best food blogs recipes 2024 -site:youtube.com";
-
-        // Use the newly created SerpApiClient
-        SerpApiClient.getService().search("google", query, apiKey, 8)
-                .enqueue(new Callback<RecipeBlogs>() {
-                    @Override
-                    public void onResponse(Call<RecipeBlogs> call, Response<RecipeBlogs> response) {
-                        if (response.isSuccessful() && response.body() != null) {
-                            RecipeBlogs blogResponse = response.body();
-                            List<BlogItem> blogs = new ArrayList<>();
-
-                            int recipeCount = (blogResponse.recipes_results != null)
-                                    ? blogResponse.recipes_results.size()
-                                    : 0;
-                            int organicCount = (blogResponse.organic_results != null)
-                                    ? blogResponse.organic_results.size()
-                                    : 0;
-                            android.util.Log.d("HomeFragment",
-                                    "Found " + recipeCount + " recipes_results, " + organicCount + " organic_results");
-
-                            // 1. Check recipes_results (Prioritize these as they have better images)
-                            if (blogResponse.recipes_results != null) {
-                                for (RecipeBlogs.RecipesResult result : blogResponse.recipes_results) {
-                                    if (result.title != null && result.link != null) {
-                                        String thumbnail = result.thumbnail;
-                                        String source = result.source != null ? result.source : "Recipe";
-                                        String snippet = (result.ingredients != null
-                                                ? result.ingredients.size() + " ingredients"
-                                                : "");
-                                        blogs.add(new BlogItem(result.title, result.link, thumbnail, source, snippet));
-                                    }
-                                }
-                            }
-
-                            // 2. Check organic_results (Append as secondary)
-                            if (blogResponse.organic_results != null) {
-                                for (RecipeBlogs.OrganicResult result : blogResponse.organic_results) {
-                                    if (result.title != null && result.link != null) {
-                                        // Use the thumbnail field directly from POJO or fallback to pagemap
-                                        String thumbnail = result.thumbnail;
-                                        // Fallback logic
-                                        if (thumbnail == null || thumbnail.isEmpty()) {
-                                            // Try pagemap logic if needed, or leave null
-                                        }
-
-                                        String source = result.source != null ? result.source : "Web";
-                                        blogs.add(new BlogItem(result.title, result.link, thumbnail, source,
-                                                result.snippet));
-                                    }
-                                }
-                            }
-
-                            if (!blogs.isEmpty()) {
-                                String firstThumb = blogs.get(0).getThumbnail();
-                                Toast.makeText(getContext(), "First Thumb: " + firstThumb, Toast.LENGTH_LONG).show();
-                            } else {
-                                Toast.makeText(getContext(), "No blogs found!", Toast.LENGTH_SHORT).show();
-                            }
-
-                            adapter.updateData(blogs);
-                        } else {
-                            android.util.Log.e("HomeFragment", "SerpApi Failed: " + response.code());
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(Call<RecipeBlogs> call, Throwable t) {
-                        android.util.Log.e("HomeFragment", "SerpApi Network Error: " + t.getMessage(), t);
-                    }
-                });
-    }
-
-    private void showBlogOptionsDialog(BlogItem blog) {
-        com.google.android.material.bottomsheet.BottomSheetDialog bottomSheetDialog = new com.google.android.material.bottomsheet.BottomSheetDialog(
-                requireContext());
-        View sheetView = getLayoutInflater().inflate(R.layout.dialog_blog_options, null);
-        bottomSheetDialog.setContentView(sheetView);
-
-        ImageView imgHeader = sheetView.findViewById(R.id.imgBlogHeader);
-        android.widget.TextView tvTitle = sheetView.findViewById(R.id.tvBlogTitle);
-        android.widget.TextView tvSource = sheetView.findViewById(R.id.tvBlogSource);
-        android.widget.TextView tvSnippet = sheetView.findViewById(R.id.tvBlogSnippet);
-
-        View btnExtract = sheetView.findViewById(R.id.btnExtractRecipe);
-        View btnRead = sheetView.findViewById(R.id.btnReadOnSite);
-
-        tvTitle.setText(blog.getTitle());
-        tvSource.setText(blog.getSource());
-        tvSnippet.setText(blog.getSnippet());
-
-        if (blog.getThumbnail() != null && !blog.getThumbnail().isEmpty()) {
-            com.squareup.picasso.Picasso.get().load(blog.getThumbnail()).into(imgHeader);
-        } else {
-            imgHeader.setImageResource(R.drawable.ic_launcher_background);
-        }
-
-        btnExtract.setOnClickListener(v -> {
-            bottomSheetDialog.dismiss();
-            extractRecipe(blog.getLink(), blog.getThumbnail());
-        });
-
-        btnRead.setOnClickListener(v -> {
-            bottomSheetDialog.dismiss();
-            if (blog.getLink() != null) {
-                android.content.Intent intent = new android.content.Intent(getContext(), BlogReaderActivity.class);
-                intent.putExtra("blog_url", blog.getLink());
-                startActivity(intent);
-            }
-        });
-
-        bottomSheetDialog.show();
     }
 
     private void showChatBottomSheet() {
@@ -523,7 +391,7 @@ public class HomeFragment extends Fragment {
         if (thumbnailUrl != null && !thumbnailUrl.isEmpty()) {
             com.squareup.picasso.Picasso.get().load(thumbnailUrl).into(imgBg);
         } else {
-            imgBg.setImageResource(R.drawable.ic_launcher_background); // Or a default drawable
+            imgBg.setImageResource(R.drawable.auth_back); // Set auth_back drawable as background
         }
 
         extractionDialog.show();

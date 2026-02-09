@@ -243,7 +243,7 @@ def node_extract_text_from_video(state: AgentState):
 
         print("DEBUG: Generating content...")
         # Keeping user's requested model
-        model = genai.GenerativeModel('gemini-2.0-flash-exp') 
+        model = genai.GenerativeModel('gemini-3-flash-preview') 
         prompt = """
         You are an expert chef. Watch this video and write down the full recipe.
         """
@@ -299,7 +299,7 @@ def node_analyze_image_type(state: AgentState):
     
     try:
         image_file = genai.upload_file(path=image_path)
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        model = genai.GenerativeModel('gemini-3-flash-preview')
         
         prompt = """
         Analyze this image. 

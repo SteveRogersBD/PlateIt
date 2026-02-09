@@ -484,7 +484,7 @@ def search_youtube_videos(query: str, limit: int = 5):
 def search_google_blogs(query: str, limit: int = 5):
     """
     Searches Google via SerpAPI for blog posts/articles.
-    Returns a list of blog objects.
+    Returns a unified list of blog objects, prioritizing recipe cards.
     """
     api_key = os.getenv("SERP_API_KEY")
     if not api_key:
@@ -505,42 +505,63 @@ def search_google_blogs(query: str, limit: int = 5):
         data = response.json()
         
         blogs = []
+        
+        # 1. Prioritize "recipes_results" (Rich Cards)
+        if "recipes_results" in data:
+            for item in data["recipes_results"]:
+                # Construct a snippet from ingredients or time
+                snippet = ""
+                if "ingredients" in item:
+                    snippet = f"Ingredients: {', '.join(item['ingredients'][:3])}..."
+                elif "total_time" in item:
+                     snippet = f"Time: {item['total_time']}"
+                     
+                blogs.append({
+                    "title": item.get("title"),
+                    "link": item.get("link"),
+                    "thumbnail": item.get("thumbnail"), 
+                    "source": item.get("source"),
+                    "snippet": snippet
+                })
+
+        # 2. Append "organic_results" (Standard Links)
         if "organic_results" in data:
             for item in data["organic_results"]:
                 
                 # Check for "recipe" intent in title or snippet to filter out generic articles
+                # (Unless we already have very few results)
                 title = item.get("title", "").lower()
                 snippet = item.get("snippet", "").lower()
-                if "recipe" not in title and "how to cook" not in title and "recipe" not in snippet:
-                    continue
+                
+                # Loose filter if lists are short
+                if len(blogs) > 10:
+                     if "recipe" not in title and "how to cook" not in title and "dish" not in title:
+                        continue
 
-                # robust image extraction
+                # Robust image extraction
                 thumbnail = item.get("thumbnail") 
                 
-                # Check pagemap for cse_image
+                # Check pagemap for cse_image / cse_thumbnail (Best source for blog images)
                 if not thumbnail and "pagemap" in item:
-                    cse_images = item["pagemap"].get("cse_image")
+                    pagemap = item["pagemap"]
+                    
+                    # Try cse_image first
+                    cse_images = pagemap.get("cse_image")
                     if cse_images and isinstance(cse_images, list) and len(cse_images) > 0:
                         thumbnail = cse_images[0].get("src")
                     
-                    # Check pagemap for cse_thumbnail
+                    # Try cse_thumbnail second
                     if not thumbnail:
-                        cse_thumbs = item["pagemap"].get("cse_thumbnail")
+                        cse_thumbs = pagemap.get("cse_thumbnail")
                         if cse_thumbs and isinstance(cse_thumbs, list) and len(cse_thumbs) > 0:
                             thumbnail = cse_thumbs[0].get("src")
+                            
+                    # Try metatags og:image
+                    if not thumbnail:
+                        metatags = pagemap.get("metatags")
+                        if metatags and isinstance(metatags, list) and len(metatags) > 0:
+                            thumbnail = metatags[0].get("og:image")
 
-                # Check rich_snippet (common in SerpApi)
-                if not thumbnail and "rich_snippet" in item:
-                    top = item["rich_snippet"].get("top", {})
-                    if "detected_extensions" in top:
-                        thumbnail = top["detected_extensions"].get("thumbnail")
-                    if not thumbnail and "extensions" in top:
-                         # Sometimes it's a list
-                         exts = top.get("extensions", [])
-                         if isinstance(exts, list) and len(exts) > 0 and isinstance(exts[0], str):
-                             # This is usually text, ignore
-                             pass
-                
                 blogs.append({
                     "title": item.get("title"),
                     "link": item.get("link"),
@@ -548,7 +569,17 @@ def search_google_blogs(query: str, limit: int = 5):
                     "source": item.get("source"),
                     "thumbnail": thumbnail
                 })
-        return blogs
+                
+        # Deduplicate by link
+        seen_links = set()
+        unique_blogs = []
+        for b in blogs:
+            if b['link'] and b['link'] not in seen_links:
+                unique_blogs.append(b)
+                seen_links.add(b['link'])
+                
+        return unique_blogs[:limit]
+        
     except Exception as e:
         print(f"Error searching Google for '{query}': {e}")
         return []

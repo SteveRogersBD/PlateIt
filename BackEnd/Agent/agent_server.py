@@ -79,11 +79,7 @@ def signin(request: SigninRequest, session: Session = Depends(get_session)):
     statement = select(User).where(User.email == request.email)
     user = session.exec(statement).first()
     
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Simple plain text password check
-    if user.password != request.password:
+    if not user or user.password != request.password:
         raise HTTPException(status_code=401, detail="Invalid credentials")
         
     return AuthResponse(
@@ -153,7 +149,7 @@ def get_video_recommendations(user_id: uuid.UUID, session: Session = Depends(get
     # Prepare queries
     queries = []
     if not target_prefs:
-        queries.append("trending cooking recipes")
+        queries.append("chicken recipes")
     else:
         for p in target_prefs:
             queries.append(f"{p} recipes")
@@ -174,53 +170,12 @@ def get_video_recommendations(user_id: uuid.UUID, session: Session = Depends(get
     
     # Shuffle results to mix "Italian" and "Dessert" videos together
     random.shuffle(all_videos)
-    
-    return {"videos": all_videos}
 
-# --- Blog Recommendation Endpoint ---
-from tools import search_google_blogs
+    return {"videos": all_videos} # Added missing return statement
 
-@app.get("/recommendations/blogs/{user_id}")
-def get_blog_recommendations(user_id: uuid.UUID, session: Session = Depends(get_session)):
-    user = session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    preferences = user.preferences if user.preferences else []
-    all_blogs = []
-    seen_links = set()
 
-    # Strategy: diverse sampling
-    if len(preferences) > 3:
-        target_prefs = random.sample(preferences, 3)
-    else:
-        target_prefs = preferences
 
-    # Prepare queries
-    queries = []
-    if not target_prefs:
-        queries.append("popular food blogs recipes")
-    else:
-        for p in target_prefs:
-            queries.append(f"best {p} food blog recipe -site:youtube.com") # Exclude YouTube
 
-    print(f"Fetching blogs for topics: {queries}")
-
-    # Fetch and Aggregate
-    for q in queries:
-        # We fetch ~5 blogs per topic
-        blogs = search_google_blogs(q, limit=5)
-        
-        if isinstance(blogs, list):
-            for b in blogs:
-                if b.get('link') and b['link'] not in seen_links:
-                    all_blogs.append(b)
-                    seen_links.add(b['link'])
-    
-    # Shuffle results
-    random.shuffle(all_blogs)
-    
-    return {"blogs": all_blogs}
 
 # --- Pantry Endpoints ---
 @app.get("/pantry/{user_id}")
@@ -642,26 +597,6 @@ def _get_image_for_item(item_name: str) -> str:
         except Exception as e:
             print(f"Spoonacular image fetch error: {e}")
 
-    # 2. SerpApi Google Images (Fallback)
-    serp_key = os.getenv("SERP_API_KEY")
-    if serp_key:
-        try:
-            url = "https://serpapi.com/search"
-            params = {
-                "engine": "google_images",
-                "q": item_name + " food ingredient",
-                "api_key": serp_key,
-                "num": 1,
-                "safe": "active"
-            }
-            resp = requests.get(url, params=params)
-            if resp.status_code == 200:
-                data = resp.json()
-                if "images_results" in data and len(data["images_results"]) > 0:
-                     return data["images_results"][0].get("thumbnail") 
-        except Exception as e:
-            print(f"SerpApi image fetch error: {e}")
-            
     return ""
 
 @app.get("/get_ingredient_image")
