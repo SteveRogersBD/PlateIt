@@ -14,9 +14,15 @@ public interface AgentApiService {
         retrofit2.Call<com.example.plateit.responses.RecipeResponse> getRecipeDetails(
                         @retrofit2.http.Path("id") int recipeId);
 
-        @retrofit2.http.POST("scan_pantry")
-        retrofit2.Call<com.example.plateit.responses.PantryScanResponse> scanPantry(
-                        @retrofit2.http.Body com.example.plateit.requests.PantryScanRequest request);
+        @retrofit2.http.Multipart
+        @retrofit2.http.POST("pantry/scan_image")
+        retrofit2.Call<com.example.plateit.responses.PantryScanResponse> scanPantryImage(
+                        @retrofit2.http.Part okhttp3.MultipartBody.Part image);
+
+        @retrofit2.http.Multipart
+        @retrofit2.http.POST("recipes/identify_dish")
+        retrofit2.Call<com.example.plateit.responses.RecipeResponse> identifyDishFromImage(
+                        @retrofit2.http.Part okhttp3.MultipartBody.Part image);
 
         @retrofit2.http.GET("get_ingredient_image")
         retrofit2.Call<com.example.plateit.responses.IngredientImageResponse> getIngredientImage(

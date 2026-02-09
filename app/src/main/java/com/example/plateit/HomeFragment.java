@@ -320,16 +320,14 @@ public class HomeFragment extends Fragment {
             new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(), result -> {
                 if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
                     android.graphics.Bitmap photo = (android.graphics.Bitmap) result.getData().getExtras().get("data");
-                    // TODO: Send 'photo' to Backend Agent
-                    Toast.makeText(getContext(), "Photo captured! Sending to Chef...", Toast.LENGTH_SHORT).show();
+                    processBitmapForRecipe(photo);
                 }
             });
 
     private final androidx.activity.result.ActivityResultLauncher<String> galleryLauncher = registerForActivityResult(
             new androidx.activity.result.contract.ActivityResultContracts.GetContent(), uri -> {
                 if (uri != null) {
-                    // TODO: Send 'uri' to Backend Agent
-                    Toast.makeText(getContext(), "Image selected! Analyzing...", Toast.LENGTH_SHORT).show();
+                    processUriForRecipe(uri);
                 }
             });
 
@@ -367,6 +365,82 @@ public class HomeFragment extends Fragment {
         });
 
         bottomSheetDialog.show();
+    }
+
+    // --- Image Processing Helpers ---
+
+    private void processBitmapForRecipe(android.graphics.Bitmap bitmap) {
+        try {
+            java.io.File file = new java.io.File(getContext().getCacheDir(),
+                    "recipe_scan_" + System.currentTimeMillis() + ".jpg");
+            file.createNewFile();
+            java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, bos);
+            byte[] bitmapdata = bos.toByteArray();
+
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+            fos.write(bitmapdata);
+            fos.flush();
+            fos.close();
+
+            uploadImageForRecipe(file);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(getContext(), "Error processing camera image", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void processUriForRecipe(android.net.Uri uri) {
+        try {
+            java.io.InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);
+            java.io.File file = new java.io.File(getContext().getCacheDir(),
+                    "recipe_gallery_" + System.currentTimeMillis() + ".jpg");
+            java.io.FileOutputStream outputStream = new java.io.FileOutputStream(file);
+
+            byte[] buffer = new byte[4 * 1024]; // 4kb buffer
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            outputStream.flush();
+            outputStream.close();
+            inputStream.close();
+
+            uploadImageForRecipe(file);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(getContext(), "Error processing gallery image", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void uploadImageForRecipe(java.io.File file) {
+        showExtractionProgress("Scanning Dish...");
+
+        okhttp3.RequestBody reqFile = okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), file);
+        okhttp3.MultipartBody.Part body = okhttp3.MultipartBody.Part.createFormData("file", file.getName(), reqFile);
+
+        RetrofitClient.getAgentService().identifyDishFromImage(body).enqueue(new Callback<RecipeResponse>() {
+            @Override
+            public void onResponse(Call<RecipeResponse> call, Response<RecipeResponse> response) {
+                if (extractionDialog != null)
+                    extractionDialog.dismiss();
+
+                if (response.isSuccessful() && response.body() != null) {
+                    showRecipePreviewDialog(response.body());
+                } else {
+                    Toast.makeText(getContext(), "Failed to identify dish.", Toast.LENGTH_SHORT).show();
+                }
+                file.delete();
+            }
+
+            @Override
+            public void onFailure(Call<RecipeResponse> call, Throwable t) {
+                if (extractionDialog != null)
+                    extractionDialog.dismiss();
+                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                file.delete();
+            }
+        });
     }
 
     private void showVideoOptionsDialog(RecipeVideo video) {

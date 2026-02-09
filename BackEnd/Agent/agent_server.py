@@ -420,56 +420,62 @@ def get_full_recipe_details(recipe_id: int):
          raise HTTPException(status_code=500, detail=str(e))
 
 # --- Pantry Extraction Endpoint ---
-class PantryScanRequest(BaseModel):
-    image_data: str # Base64 encoded image
-
-@app.post("/scan_pantry")
-async def scan_pantry(request: PantryScanRequest):
+# --- Pantry Extraction Endpoint (Image) ---
+@app.post("/pantry/scan_image")
+async def scan_pantry_image(file: UploadFile = File(...)):
     """
-    Analyzes an image and returns a list of pantry items.
+    Analyzes an image file (Multipart) and returns a list of pantry items.
     """
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    from langchain_core.messages import HumanMessage
-    import base64
+    import google.generativeai as genai
     import json
-
-    print("--- Pantry Scan Request ---")
+    
+    print(f"--- Pantry Scan Request (File: {file.filename}) ---")
     
     try:
-        # 1. Initialize Gemini
-        llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp") 
-        # Or "gemini-1.5-flash" depending on availability, but 2.0 is great for vision
+        # 1. Save locally
+        temp_filename = f"temp_pantry_{uuid.uuid4()}.jpg"
+        with open(temp_filename, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # 2. Configure Gemini
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        genai.configure(api_key=api_key)
         
-        # 2. Construct Message
+        # 3. Upload to Gemini
+        print("Uploading to Gemini...")
+        sample_file = genai.upload_file(path=temp_filename, display_name="Pantry Image")
+        
+        # 4. Prompt
+        # User requested "Gemini 3", using gemini-3-flash-preview as the vision workhorse
+        model = genai.GenerativeModel('gemini-3-flash-preview')
+        
         prompt = """
         Analyze this image and identify all food items visible.
         Return ONLY a JSON array of objects with 'name' and 'amount' fields.
         Example:
         [
             {"name": "Milk", "amount": "1 Gallon"},
-            {"name": "Eggs", "amount": "12 count"},
-            {"name": "Apple", "amount": "3"}
+            {"name": "Eggs", "amount": "12 count"}
         ]
         If implicit, estimate the amount. If unsure, use "1".
-        Do not include Markdown formatting or code blocks. Just the raw JSON.
+        Do not include Markdown formatting (```json ... ```). Just the raw JSON string.
         """
         
-        message = HumanMessage(
-            content=[
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{request.image_data}"}}
-            ]
-        )
+        print("Generating content...")
+        response = model.generate_content([sample_file, prompt])
         
-        # 3. Invoke
-        response = llm.invoke([message])
-        content = response.content.replace("```json", "").replace("```", "").strip()
-        
-        # 4. Parse
+        # 5. Cleanup
+        try:
+            genai.delete_file(sample_file.name)
+            os.remove(temp_filename)
+        except Exception as e:
+            print(f"Cleanup warning: {e}")
+
+        # 6. Parse
+        content = response.text.replace("```json", "").replace("```", "").strip()
         items = json.loads(content)
         
-        # 5. Enrich with images in parallel
-        # (For simplicity here, sequential is fine for a few items, or simple loop)
+        # 7. Enrich (Simple Loop)
         for item in items:
             item["image_url"] = _get_image_for_item(item.get("name", ""))
             
@@ -477,6 +483,81 @@ async def scan_pantry(request: PantryScanRequest):
 
     except Exception as e:
         print(f"Pantry Scan Error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Dish Identification Endpoint ---
+@app.post("/recipes/identify_dish")
+async def identify_dish_from_image(file: UploadFile = File(...)):
+    """
+    Analyzes a dish image and returns a full recipe.
+    """
+    import google.generativeai as genai
+    import json
+    
+    print(f"--- Dish Analysis Request (File: {file.filename}) ---")
+    
+    try:
+        # 1. Save locally
+        temp_filename = f"temp_dish_{uuid.uuid4()}.jpg"
+        with open(temp_filename, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # 2. Configure Gemini
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        genai.configure(api_key=api_key)
+        
+        # 3. Upload
+        print("Uploading to Gemini...")
+        sample_file = genai.upload_file(path=temp_filename, display_name="Dish Image")
+        
+        # 4. Prompt
+        # User requested "Gemini 3", using gemini-3-flash-preview
+        model = genai.GenerativeModel('gemini-3-flash-preview')
+        
+        prompt = """
+        You are an expert Chef. The user has uploaded a photo of a finished dish.
+        1. Identify the dish.
+        2. Create an authentic, detailed recipe for it.
+        
+        Return the result as a strictly formatted JSON object matching this schema:
+        {
+            "name": "Recipe Name",
+            "total_time": "e.g. 45 mins",
+            "ingredients": [
+                {"name": "Ingredient 1", "amount": "Quantity", "imageUrl": null}
+            ],
+            "steps": [
+                {"instruction": "Step 1...", "visual_query": "search term for step 1", "imageUrl": null}
+            ]
+        }
+        Do not include Markdown formatting. Just the raw JSON.
+        """
+        
+        print("Generating content...")
+        response = model.generate_content([sample_file, prompt])
+        
+        # 5. Cleanup
+        try:
+            genai.delete_file(sample_file.name)
+            os.remove(temp_filename)
+        except Exception as e:
+            print(f"Cleanup warning: {e}")
+            
+        # 6. Parse
+        content = response.text.replace("```json", "").replace("```", "").strip()
+        recipe_data = json.loads(content)
+        
+        # 7. Enrich Ingredients (Optional but nice)
+        if "ingredients" in recipe_data:
+            for ing in recipe_data["ingredients"]:
+                 ing["imageUrl"] = _get_image_for_item(ing.get("name", ""))
+        
+        return recipe_data
+
+    except Exception as e:
+        print(f"Dish Analysis Error: {e}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))

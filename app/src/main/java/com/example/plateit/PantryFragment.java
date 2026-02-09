@@ -257,14 +257,16 @@ public class PantryFragment extends Fragment {
     }
 
     private void showAddOptions() {
-        String[] options = { "Type Manually", "Scan with Camera" };
+        String[] options = { "Type Manually", "Scan with Camera", "Choose from Gallery" };
         new AlertDialog.Builder(requireContext())
                 .setTitle("Add Item")
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
                         showManualAddDialog();
-                    } else {
+                    } else if (which == 1) {
                         openCamera();
+                    } else {
+                        galleryLauncher.launch("image/*");
                     }
                 })
                 .show();
@@ -323,63 +325,122 @@ public class PantryFragment extends Fragment {
                 });
     }
 
+    // --- Camera & Gallery Launchers ---
+    private final androidx.activity.result.ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(
+            new androidx.activity.result.contract.ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    launchCameraIntent();
+                } else {
+                    Toast.makeText(getContext(), "Camera permission required.", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    private final androidx.activity.result.ActivityResultLauncher<Intent> cameraLauncher = registerForActivityResult(
+            new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
+                    Bundle extras = result.getData().getExtras();
+                    if (extras != null) {
+                        Bitmap imageBitmap = (Bitmap) extras.get("data");
+                        if (imageBitmap != null) {
+                            processImage(imageBitmap);
+                        }
+                    }
+                }
+            });
+
+    private final androidx.activity.result.ActivityResultLauncher<String> galleryLauncher = registerForActivityResult(
+            new androidx.activity.result.contract.ActivityResultContracts.GetContent(), uri -> {
+                if (uri != null) {
+                    processUri(uri);
+                }
+            });
+
     private void openCamera() {
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (takePictureIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
-            startActivityForResult(takePictureIntent, CAMERA_REQUEST_CODE);
+        if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
+                android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            launchCameraIntent();
         } else {
-            Toast.makeText(getContext(), "No camera app found", Toast.LENGTH_SHORT).show();
+            requestPermissionLauncher.launch(android.Manifest.permission.CAMERA);
         }
     }
 
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == CAMERA_REQUEST_CODE && resultCode == android.app.Activity.RESULT_OK) {
-            Bundle extras = data.getExtras();
-            Bitmap imageBitmap = (Bitmap) extras.get("data");
-            if (imageBitmap != null) {
-                processImage(imageBitmap);
-            }
+    private void launchCameraIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        try {
+            cameraLauncher.launch(takePictureIntent);
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Camera not found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void processUri(android.net.Uri uri) {
+        try {
+            Bitmap bitmap = MediaStore.Images.Media.getBitmap(requireContext().getContentResolver(), uri);
+            processImage(bitmap);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(getContext(), "Error loading image", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void processImage(Bitmap bitmap) {
         progressBar.setVisibility(View.VISIBLE);
-        Toast.makeText(getContext(), "Analyzing image...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(getContext(), "Analyzing pantry image...", Toast.LENGTH_SHORT).show();
 
-        // Convert to Base64
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream.toByteArray();
-        String imageBase64 = Base64.encodeToString(byteArray, Base64.NO_WRAP);
+        try {
+            // 1. Save Bitmap to File
+            java.io.File file = new java.io.File(getContext().getCacheDir(),
+                    "pantry_scan_" + System.currentTimeMillis() + ".jpg");
+            file.createNewFile();
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos);
+            byte[] bitmapdata = bos.toByteArray();
 
-        PantryScanRequest request = new PantryScanRequest(imageBase64);
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+            fos.write(bitmapdata);
+            fos.flush();
+            fos.close();
 
-        RetrofitClient.getAgentService().scanPantry(request).enqueue(new Callback<PantryScanResponse>() {
-            @Override
-            public void onResponse(Call<PantryScanResponse> call, Response<PantryScanResponse> response) {
-                progressBar.setVisibility(View.GONE);
-                if (response.isSuccessful() && response.body() != null) {
-                    List<PantryScanResponse.PantryItem> scannedItems = response.body().getItems();
-                    if (scannedItems != null && !scannedItems.isEmpty()) {
-                        saveBatchItems(scannedItems);
-                        Toast.makeText(getContext(), "Added " + scannedItems.size() + " items!", Toast.LENGTH_SHORT)
-                                .show();
+            // 2. Create Multipart Body
+            okhttp3.RequestBody reqFile = okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), file);
+            okhttp3.MultipartBody.Part body = okhttp3.MultipartBody.Part.createFormData("file", file.getName(),
+                    reqFile);
+
+            // 3. Upload
+            RetrofitClient.getAgentService().scanPantryImage(body).enqueue(new Callback<PantryScanResponse>() {
+                @Override
+                public void onResponse(Call<PantryScanResponse> call, Response<PantryScanResponse> response) {
+                    progressBar.setVisibility(View.GONE);
+                    if (response.isSuccessful() && response.body() != null) {
+                        List<PantryScanResponse.PantryItem> scannedItems = response.body().getItems();
+                        if (scannedItems != null && !scannedItems.isEmpty()) {
+                            saveBatchItems(scannedItems);
+                            Toast.makeText(getContext(), "Identified " + scannedItems.size() + " items!",
+                                    Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(), "No items found. Try a clearer photo.", Toast.LENGTH_SHORT)
+                                    .show();
+                        }
                     } else {
-                        Toast.makeText(getContext(), "No items found in image", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getContext(), "Failed: " + response.message(), Toast.LENGTH_SHORT).show();
                     }
-                } else {
-                    Toast.makeText(getContext(), "Failed to analyze image", Toast.LENGTH_SHORT).show();
+                    // Optimize: Delete temp file
+                    file.delete();
                 }
-            }
 
-            @Override
-            public void onFailure(Call<PantryScanResponse> call, Throwable t) {
-                progressBar.setVisibility(View.GONE);
-                Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+                @Override
+                public void onFailure(Call<PantryScanResponse> call, Throwable t) {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    file.delete();
+                }
+            });
+
+        } catch (Exception e) {
+            progressBar.setVisibility(View.GONE);
+            e.printStackTrace();
+            Toast.makeText(getContext(), "Error processing image: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void saveItem(String name, String amount, String imageUrl) {
