@@ -21,6 +21,7 @@
     <color name="soft_cream">@color/chef_background</color>
     
     <!-- UI Specifics -->
+    <color name="gray_400">#BDBDBD</color>
     <color name="gray_600">#757575</color>
     <color name="gray_800">#424242</color>
     <color name="app_primary">@color/chef_orange</color>
