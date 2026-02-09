@@ -1,0 +1,9 @@
+
+.env
+.venv
+__pycache__
+*.pyc
+.git
+.idea
+agent_workflow.png
+my_video.mp4

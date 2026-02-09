@@ -74,8 +74,12 @@ class AgentState(TypedDict):
     enriched_ingredients: list[Ingredient]
     enriched_steps: list[RecipeStep]
 
+# Ensure API Key is available to LangChain
+if not os.environ.get("GOOGLE_API_KEY") and os.environ.get("GEMINI_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+
 # Initialize LLM
-llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash-exp")
 recipe_llm = llm.with_structured_output(Recipe)
 
 # --- Router Logic ---
@@ -239,7 +243,7 @@ def node_extract_text_from_video(state: AgentState):
 
         print("DEBUG: Generating content...")
         # Keeping user's requested model
-        model = genai.GenerativeModel('gemini-3-flash-preview') 
+        model = genai.GenerativeModel('gemini-2.0-flash-exp') 
         prompt = """
         You are an expert chef. Watch this video and write down the full recipe.
         """
@@ -295,7 +299,7 @@ def node_analyze_image_type(state: AgentState):
     
     try:
         image_file = genai.upload_file(path=image_path)
-        model = genai.GenerativeModel('gemini-3-flash-preview')
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
         prompt = """
         Analyze this image. 
