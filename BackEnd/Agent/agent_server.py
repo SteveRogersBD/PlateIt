@@ -16,10 +16,8 @@ import random
 
 app = FastAPI()
 
-# --- HARDCODED GEMINI KEY ---
-os.environ["GOOGLE_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
-os.environ["GEMINI_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
-# ----------------------------
+# Keys are loaded from environment variables (Cloud Run or .env file)
+# os.environ["GOOGLE_API_KEY"] and "GEMINI_API_KEY" should be set in the environment.
 
 # --- Auth Models ---
 class SignupRequest(BaseModel):
