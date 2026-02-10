@@ -55,7 +55,7 @@ The agent has access to a specialized suite of tools, allowing it to interact wi
 
 ## 🤖 Why Gemini?
 
-We utilize **Gemini 1.5/2.0 Flash** as our primary orchestrator for several reasons:
+We utilize **Gemini 3** as our primary orchestrator for several reasons:
 1.  **Multimodal Native**: It can "see" the food images and "watch" the cooking videos directly without needing separate OCR or frame-extraction pipelines.
 2.  **Long Context Window**: Essential for processing full video transcripts or lengthy blog posts to extract accurate recipe steps.
 3.  **Speed**: The Flash model provides near-instant responses, crucial for a chat application.
