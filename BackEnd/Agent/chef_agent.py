@@ -11,14 +11,13 @@ from tools import (
     search_recipes, search_by_nutrients, find_by_ingredients,
     get_recipe_information, find_similar_recipes, get_random_recipes,
     extract_recipe_from_url, search_ingredients, get_ingredient_information,
-    create_recipe_card, google_search, google_image_search
+    create_recipe_card, google_search, google_image_search, search_youtube
 )
 from schemas import AgentResponse
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- HARDCODED GEMINI KEY REMOVED ---
 # Keys should be provided via environment variables.
 
 # --- 1. State Definition ---
@@ -34,7 +33,7 @@ tools = [
      search_recipes, search_by_nutrients, find_by_ingredients,
      get_recipe_information, find_similar_recipes, get_random_recipes,
      extract_recipe_from_url, search_ingredients, get_ingredient_information,
-     create_recipe_card, google_search, google_image_search
+     create_recipe_card, google_search, google_image_search, search_youtube
 ]
 
 # The "Chef" model

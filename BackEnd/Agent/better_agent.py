@@ -29,8 +29,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- HARDCODED GEMINI KEY REMOVED ---
-# Keys should be provided via environment variables.
+# --- HARDCODED GEMINI KEY ---
+# Keys should be provided via environment variables (.env)
+# ----------------------------
 
 # --- Data Models ---
 

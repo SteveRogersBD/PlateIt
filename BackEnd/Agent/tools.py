@@ -5,10 +5,12 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 import time
 import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --- HARDCODED GEMINI KEY ---
-# os.environ["GOOGLE_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
-# os.environ["GEMINI_API_KEY"] = "AIzaSyDDpI0d1hz9Bz0nbe7vS936FZ0IDbvTsqo"
+# Keys should be provided via environment variables (.env)
 # ----------------------------
 
 # --- Google / SerpAPI Tools ---
@@ -42,7 +44,11 @@ def google_search(query: str):
                 title = item.get('title', 'No Title')
                 link = item.get('link', 'No Link')
                 snippet = item.get('snippet', 'No Snippet')
-                results.append(f"Title: {title}\nLink: {link}\nSnippet: {snippet}")
+                thumbnail = item.get('thumbnail')
+                if thumbnail:
+                    results.append(f"Title: {title}\nLink: {link}\nImage: {thumbnail}\nSnippet: {snippet}")
+                else:
+                    results.append(f"Title: {title}\nLink: {link}\nSnippet: {snippet}")
         
         if not results:
             return "No good search results found."
@@ -122,7 +128,7 @@ def search_recipes(query: str, cuisine: str = None, diet: str = None, number: in
     
     results = []
     for r in data.get("results", []):
-        results.append(f"ID: {r['id']} | Title: {r['title']} | Time: {r.get('readyInMinutes')}m")
+        results.append(f"ID: {r['id']} | Title: {r['title']} | Image: {r.get('image')} | Time: {r.get('readyInMinutes')}m")
         
     return "\n".join(results) if results else "No recipes found."
 
@@ -142,7 +148,7 @@ def search_by_nutrients(min_protein: int = 0, max_calories: int = 1000, number: 
     
     results = []
     for r in data:
-        results.append(f"ID: {r['id']} | Title: {r['title']} | Cal: {r['calories']} | Protein: {r['protein']}")
+        results.append(f"ID: {r['id']} | Title: {r['title']} | Image: {r.get('image')} | Cal: {r['calories']} | Protein: {r['protein']}")
     return "\n".join(results) if results else "No recipes found."
 
 @tool
@@ -163,7 +169,7 @@ def find_by_ingredients(ingredients: str, number: int = 5):
     results = []
     for r in data:
         missing = [i["name"] for i in r.get("missedIngredients", [])]
-        results.append(f"ID: {r['id']} | Title: {r['title']} | Missing: {', '.join(missing)}")
+        results.append(f"ID: {r['id']} | Title: {r['title']} | Image: {r.get('image')} | Missing: {', '.join(missing)}")
     return "\n".join(results) if results else "No recipes found."
 
 @tool
@@ -204,7 +210,7 @@ def find_similar_recipes(recipe_id: int, number: int = 3):
     
     results = []
     for r in data:
-        results.append(f"ID: {r['id']} | Title: {r['title']}")
+        results.append(f"ID: {r['id']} | Title: {r['title']} | Image: {r.get('image')}")
     return "\n".join(results) if results else "No similar recipes found."
 
 @tool
@@ -221,7 +227,7 @@ def get_random_recipes(tags: str = None, number: int = 3):
     
     results = []
     for r in data.get("recipes", []):
-        results.append(f"ID: {r['id']} | Title: {r['title']}")
+        results.append(f"ID: {r['id']} | Title: {r['title']} | Image: {r.get('image')}")
     return "\n".join(results)
 
 @tool
@@ -480,6 +486,20 @@ def search_youtube_videos(query: str, limit: int = 5):
     except Exception as e:
         print(f"Error searching YouTube for '{query}': {e}")
         return []
+
+@tool
+def search_youtube(query: str, limit: int = 5):
+    """
+    Search specifically for YouTube videos to get video links and thumbnails.
+    """
+    videos = search_youtube_videos(query, limit)
+    if not videos: return "No videos found."
+    
+    results = []
+    for v in videos:
+        results.append(f"Title: {v['title']}\nLink: {v['link']}\nThumbnail: {v['thumbnail']}\nChannel: {v['channel']}")
+        
+    return "\n\n".join(results)
 
 def search_google_blogs(query: str, limit: int = 5):
     """
