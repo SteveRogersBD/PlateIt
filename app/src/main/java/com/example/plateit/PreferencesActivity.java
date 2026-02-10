@@ -72,13 +72,11 @@ public class PreferencesActivity extends AppCompatActivity {
         }
 
         if (selectedPreferences.isEmpty()) {
-            Toast.makeText(this, "Please select at least one preference", Toast.LENGTH_SHORT).show();
             return;
         }
 
         String userId = sessionManager.getUserId();
         if (userId == null) {
-            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -91,28 +89,14 @@ public class PreferencesActivity extends AppCompatActivity {
                 .enqueue(new Callback<Void>() {
                     @Override
                     public void onResponse(Call<Void> call, Response<Void> response) {
-                        android.util.Log.d("PreferencesActivity", "Response code: " + response.code());
-                        if (response.isSuccessful()) {
-                            Toast.makeText(PreferencesActivity.this, "Preferences saved!", Toast.LENGTH_SHORT).show();
-                            navigateToMain();
-                        } else {
-                            try {
-                                String errorBody = response.errorBody() != null ? response.errorBody().string()
-                                        : "Unknown error";
-                                android.util.Log.e("PreferencesActivity", "Error response: " + errorBody);
-                                Toast.makeText(PreferencesActivity.this,
-                                        "Failed: " + response.code() + " - " + errorBody, Toast.LENGTH_LONG).show();
-                            } catch (Exception e) {
-                                Toast.makeText(PreferencesActivity.this, "Failed to save preferences",
-                                        Toast.LENGTH_SHORT).show();
-                            }
-                        }
+                        // Always navigate to main regardless of success or failure
+                        navigateToMain();
                     }
 
                     @Override
                     public void onFailure(Call<Void> call, Throwable t) {
-                        android.util.Log.e("PreferencesActivity", "Network error: " + t.getMessage(), t);
-                        Toast.makeText(PreferencesActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_LONG).show();
+                        // Always navigate to main regardless of success or failure
+                        navigateToMain();
                     }
                 });
     }
